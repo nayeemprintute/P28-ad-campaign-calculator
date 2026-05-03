@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Printiut — Meta Ad Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:      #0d0f12;
+      --surface: #141720;
+      --sur2:    #1c2030;
+      --border:  #252a3a;
+      --bor2:    #2e3550;
+      --accent:  #3d7eff;
+      --acc2:    #6c9fff;
+      --green:   #22d3a0;
+      --red:     #ff4e6a;
+      --yellow:  #f5c542;
+      --purple:  #a78bfa;
+      --text:    #e8ecf4;
+      --text2:   #8892a8;
+      --text3:   #525c72;
+      --mono:    'DM Mono', monospace;
+      --sans:    'Syne', sans-serif;
+      --r:       10px;
+      --shadow:  0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 1140px; margin: 0 auto;
+      padding: 24px 20px 80px;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 32px; padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap; gap: 12px;
+    }
+    .logo-name { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+    .logo-sub  { font-family: var(--mono); font-size: 0.68rem; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 3px; }
+    .header-date { font-family: var(--mono); font-size: 0.75rem; color: var(--text3); }
+
+    /* ── BALANCE HERO ── */
+    .balance-hero {
+      background: linear-gradient(135deg,#0f1a35,#111827);
+      border: 1px solid var(--bor2); border-radius: 14px;
+      padding: 26px 30px; margin-bottom: 22px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 22px; position: relative; overflow: hidden;
+    }
+    .balance-hero::after {
+      content:''; position:absolute; top:-60px; right:-60px;
+      width:220px; height:220px;
+      background: radial-gradient(circle,rgba(61,126,255,.13) 0%,transparent 70%);
+      pointer-events:none;
+    }
+    .bal-label  { font-family:var(--mono); font-size:.68rem; letter-spacing:.15em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+    .bal-amount { font-size:2.8rem; font-weight:800; letter-spacing:-.04em; color:var(--green); line-height:1; }
+    .bal-amount.low { color:var(--red); }
+
+    .add-bal-form { display:flex; flex-direction:column; gap:8px; min-width:290px; flex:1; max-width:400px; }
+    .add-bal-row  { display:flex; gap:8px; }
+
+    /* ── ALL INPUTS ── */
+    input[type=text], input[type=number], input[type=date], select {
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--bor2); border-radius: var(--r);
+      color: var(--text); font-family: var(--mono); font-size: .88rem;
+      padding: 9px 13px; outline: none;
+      transition: border-color .2s, background .2s;
+      width: 100%;
+    }
+    input::placeholder { color: var(--text3); }
+    input:focus, select:focus { border-color: var(--accent); background: rgba(61,126,255,.06); }
+    select { cursor: pointer; }
+    select option { background: var(--sur2); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display:inline-flex; align-items:center; gap:5px;
+      font-family:var(--sans); font-size:.82rem; font-weight:600;
+      padding:9px 16px; border-radius:var(--r); border:none;
+      cursor:pointer; transition:all .18s; white-space:nowrap; letter-spacing:.01em;
+    }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-primary:hover { background:#5590ff; transform:translateY(-1px); box-shadow:0 4px 16px rgba(61,126,255,.35); }
+    .btn-ghost { background:transparent; border:1px solid var(--bor2); color:var(--text2); }
+    .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-green { background:rgba(34,211,160,.12); color:var(--green); border:1px solid rgba(34,211,160,.3); }
+    .btn-green:hover { background:rgba(34,211,160,.22); transform:translateY(-1px); }
+    .btn-danger { background:transparent; color:var(--red); border:1px solid transparent; padding:6px 10px; font-size:.78rem; }
+    .btn-danger:hover { border-color:var(--red); background:rgba(255,78,106,.08); }
+    .btn-edit { background:transparent; color:var(--text2); border:1px solid transparent; padding:6px 10px; font-size:.78rem; }
+    .btn-edit:hover { border-color:var(--bor2); color:var(--accent); }
+    .btn-sm { padding:6px 13px; font-size:.78rem; }
+
+    /* ── STAT CARDS ── */
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:13px; margin-bottom:26px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:17px 19px; animation:fadeUp .4s ease both; }
+    .s-label { font-family:var(--mono); font-size:.62rem; letter-spacing:.15em; text-transform:uppercase; color:var(--text3); margin-bottom:7px; }
+    .s-value { font-size:1.45rem; font-weight:700; letter-spacing:-.03em; }
+    .s-value.acc { color:var(--acc2); } .s-value.grn { color:var(--green); }
+    .s-value.red { color:var(--red); }  .s-value.ylw { color:var(--yellow); }
+    .s-value.pur { color:var(--purple); }
+
+    /* ── TWO-COL ── */
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:26px; }
+    @media(max-width:660px){ .two-col { grid-template-columns:1fr; } }
+
+    /* ── PANEL ── */
+    .panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; }
+    .panel-title { font-size:.95rem; font-weight:700; color:var(--text); margin-bottom:15px; display:flex; align-items:center; gap:8px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block; flex-shrink:0; }
+
+    /* ── CAMPAIGN ITEMS ── */
+    .camp-item {
+      background:var(--sur2); border:1px solid var(--border); border-radius:var(--r);
+      padding:13px 15px; display:flex; align-items:center; gap:11px;
+      transition:border-color .2s; flex-wrap:wrap; margin-bottom:9px;
+    }
+    .camp-item:last-child { margin-bottom:0; }
+    .camp-item:hover { border-color:var(--bor2); }
+    .camp-info { flex:1; min-width:110px; }
+    .camp-name-row { font-weight:700; font-size:.88rem; color:var(--text); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .badge { font-family:var(--mono); font-size:.58rem; background:rgba(61,126,255,.15); color:var(--acc2); padding:2px 7px; border-radius:20px; letter-spacing:.05em; }
+    .camp-sub { font-family:var(--mono); font-size:.75rem; color:var(--text3); margin-top:2px; }
+    .camp-sub span { color:var(--yellow); }
+    .camp-actions { display:flex; gap:3px; }
+
+    /* ── DATE PICKER ROW ── */
+    .date-pick-row {
+      display:flex; align-items:center; gap:10px; margin-bottom:14px;
+      padding:10px 13px; background:var(--sur2); border:1px solid var(--bor2);
+      border-radius:var(--r); flex-wrap:wrap;
+    }
+    .date-pick-row label { font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); white-space:nowrap; }
+    .date-pick-row input[type=date] { width:auto; flex:1; min-width:140px; }
+
+    /* ── DAILY INPUT ROWS ── */
+    .daily-row {
+      background:var(--sur2); border:1px solid var(--border); border-radius:var(--r);
+      padding:12px 14px; display:flex; align-items:center; gap:10px;
+      flex-wrap:wrap; margin-bottom:9px;
+    }
+    .daily-row:last-of-type { margin-bottom:0; }
+    .d-name { flex:1; min-width:100px; font-weight:700; font-size:.87rem; color:var(--text); }
+    .d-name small { display:block; font-family:var(--mono); font-size:.72rem; color:var(--text3); font-weight:400; margin-top:1px; }
+    .d-num  { width:120px; }
+
+    .submit-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-top:14px; padding-top:14px; border-top:1px solid var(--border);
+      flex-wrap:wrap; gap:10px;
+    }
+    .today-prev { font-family:var(--mono); font-size:.82rem; color:var(--text2); }
+    .today-prev span { color:var(--red); font-size:1rem; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x:auto; border-radius:var(--r); }
+    table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    thead th { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); padding:9px 13px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+    tbody tr { border-bottom:1px solid var(--border); transition:background .15s; }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:rgba(255,255,255,.022); }
+    tbody td { padding:10px 13px; color:var(--text2); vertical-align:middle; white-space:nowrap; }
+    td.mono { font-family:var(--mono); font-size:.79rem; }
+    td.grn  { color:var(--green);  font-family:var(--mono); }
+    td.red  { color:var(--red);    font-family:var(--mono); }
+    td.ylw  { color:var(--yellow); font-family:var(--mono); }
+    td.bold { color:var(--text); font-weight:700; }
+
+    /* ── TYPE PILL ── */
+    .pill { display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:.62rem; padding:2px 8px; border-radius:20px; letter-spacing:.04em; }
+    .pill.spend  { background:rgba(255,78,106,.12);  color:var(--red); }
+    .pill.topup  { background:rgba(34,211,160,.12);  color:var(--green); }
+
+    /* ── TABS ── */
+    .tabs { display:flex; gap:3px; margin-bottom:16px; background:var(--sur2); padding:4px; border-radius:9px; width:fit-content; flex-wrap:wrap; }
+    .tab-btn { padding:7px 16px; border-radius:7px; border:none; background:transparent; color:var(--text3); font-family:var(--sans); font-size:.8rem; font-weight:600; cursor:pointer; transition:all .18s; }
+    .tab-btn.active { background:var(--accent); color:#fff; }
+    .tab-btn:hover:not(.active) { color:var(--text); }
+
+    /* ── FILTER ROW ── */
+    .filter-row { display:flex; gap:9px; margin-bottom:15px; flex-wrap:wrap; align-items:center; }
+    .filter-row input[type=date], .filter-row select { width:auto; }
+
+    /* ── SEC LABEL ── */
+    .sec-label { font-family:var(--mono); font-size:.65rem; letter-spacing:.15em; text-transform:uppercase; color:var(--text3); margin-bottom:10px; }
+
+    /* ── EMPTY ── */
+    .empty { text-align:center; padding:34px 20px; color:var(--text3); font-family:var(--mono); font-size:.8rem; }
+    .empty .ei { font-size:1.9rem; margin-bottom:10px; }
+
+    /* ── TOAST ── */
+    #toast { position:fixed; bottom:26px; right:26px; background:var(--sur2); border:1px solid var(--bor2); border-radius:10px; padding:11px 19px; font-size:.82rem; color:var(--text); box-shadow:var(--shadow); transform:translateY(80px); opacity:0; transition:all .3s cubic-bezier(.34,1.56,.64,1); z-index:999; max-width:300px; }
+    #toast.show { transform:translateY(0); opacity:1; }
+    #toast.ok  { border-color:var(--green); }
+    #toast.err { border-color:var(--red); }
+
+    /* ── MODAL ── */
+    .mo { position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; pointer-events:none; transition:opacity .2s; }
+    .mo.open { opacity:1; pointer-events:auto; }
+    .mo-box { background:var(--surface); border:1px solid var(--bor2); border-radius:14px; padding:26px; width:100%; max-width:430px; transform:scale(.95); transition:transform .2s; }
+    .mo.open .mo-box { transform:scale(1); }
+    .mo-box h3 { font-size:1.05rem; font-weight:700; margin-bottom:17px; }
+    .mo-field { margin-bottom:13px; }
+    .mo-field label { display:block; font-family:var(--mono); font-size:.67rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin-bottom:5px; }
+    .mo-actions { display:flex; gap:9px; justify-content:flex-end; margin-top:18px; }
+
+    /* balance history modal scrollable */
+    #mobalHist { align-items:flex-start; padding-top:60px; }
+    #mobalHist .mo-box { max-width:560px; max-height:80vh; overflow-y:auto; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .fu { animation:fadeUp .35s ease both; }
+
+    @media(max-width:600px){
+      .bal-amount { font-size:2rem; }
+      .balance-hero { padding:18px; }
+      .wrap { padding:14px 12px 60px; }
+      #toast { left:14px; right:14px; bottom:14px; }
+      .add-bal-form { min-width:100%; max-width:100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══════════ HEADER ══════════ -->
+  <header class="site-header">
+    <div>
+      <div class="logo-name">Printiut</div>
+      <div class="logo-sub">Meta Ad Tracker</div>
+    </div>
+    <div class="header-date" id="headerDate"></div>
+  </header>
+
+  <!-- ══════════ BALANCE HERO ══════════ -->
+  <div class="balance-hero">
+    <div>
+      <div class="bal-label">Current Available Balance</div>
+      <div class="bal-amount" id="balDisplay">৳0.00</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="openBalHistory()">
+        📋 Balance History
+      </button>
+    </div>
+    <div class="add-bal-form">
+      <div class="sec-label">Add Balance</div>
+      <!-- Row 1: amount -->
+      <div class="add-bal-row">
+        <input type="number" id="addBalAmt" placeholder="Amount (৳)" min="0" step="0.01"/>
+      </div>
+      <!-- Row 2: date + note -->
+      <div class="add-bal-row">
+        <input type="date" id="addBalDate" style="flex:1"/>
+        <input type="text" id="addBalNote" placeholder="Note (optional)" style="flex:2"/>
+      </div>
+      <!-- Row 3: button -->
+      <button class="btn btn-green" onclick="addBalance()" style="width:100%">+ Add Balance</button>
+    </div>
+  </div>
+
+  <!-- ══════════ STAT CARDS ══════════ -->
+  <div class="stats-grid">
+    <div class="stat-card"><div class="s-label">Spent Today</div><div class="s-value red" id="sSpdToday">৳0.00</div></div>
+    <div class="stat-card"><div class="s-label">All-Time Spent</div><div class="s-value ylw" id="sAllTime">৳0.00</div></div>
+    <div class="stat-card"><div class="s-label">Total Added</div><div class="s-value grn" id="sTotalAdded">৳0.00</div></div>
+    <div class="stat-card"><div class="s-label">Campaigns</div><div class="s-value acc" id="sCampCount">0</div></div>
+    <div class="stat-card"><div class="s-label">Total Entries</div><div class="s-value pur" id="sLogCount">0</div></div>
+  </div>
+
+  <!-- ══════════ CAMPAIGNS + SPEND ENTRY ══════════ -->
+  <div class="two-col">
+
+    <!-- Campaign Management -->
+    <div class="panel">
+      <div class="panel-title">
+        <span class="dot"></span> Campaigns
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openAddCamp()">+ New</button>
+      </div>
+      <div id="campList">
+        <div class="empty"><div class="ei">📋</div>No campaigns yet.</div>
+      </div>
+    </div>
+
+    <!-- Spend Entry -->
+    <div class="panel">
+      <div class="panel-title">
+        <span class="dot" style="background:var(--green)"></span> Spend Entry
+      </div>
+
+      <!-- Date picker — default today, can change to any date -->
+      <div class="date-pick-row">
+        <label>Entry Date</label>
+        <input type="date" id="spendDate"/>
+        <button class="btn btn-ghost btn-sm" onclick="setSpendToday()">Today</button>
+      </div>
+
+      <div id="dailyList">
+        <div class="empty"><div class="ei">💸</div>Add a campaign first.</div>
+      </div>
+
+      <div class="submit-bar" id="submitBar" style="display:none">
+        <div class="today-prev">Total: <span id="todayPrev">৳0.00</span></div>
+        <button class="btn btn-primary" onclick="submitSpend()">✔ Submit Spends</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ UNIFIED HISTORY ══════════ -->
+  <div class="panel">
+    <div class="panel-title" style="justify-content:space-between">
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="dot" style="background:var(--yellow)"></span> Full History
+      </span>
+      <button class="btn btn-danger btn-sm" onclick="confirmClearAll()">🗑 Clear All</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('all',this)">All</button>
+      <button class="tab-btn" onclick="switchTab('spend',this)">Spends</button>
+      <button class="tab-btn" onclick="switchTab('topup',this)">Top-ups</button>
+      <button class="tab-btn" onclick="switchTab('campaign',this)">By Campaign</button>
+    </div>
+
+    <div class="filter-row">
+      <input type="date" id="fDate" onchange="renderLogs()" title="Filter by date"/>
+      <select id="fCamp" onchange="renderLogs()"><option value="">All Campaigns</option></select>
+      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Clear</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Camp. Total</th>
+            <th>Balance After</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="7" class="empty" style="padding:30px">No entries yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══ MODAL: Add/Edit Campaign ══ -->
+<div class="mo" id="moCamp">
+  <div class="mo-box">
+    <h3 id="moCampTitle">New Campaign</h3>
+    <div class="mo-field">
+      <label>Campaign Name</label>
+      <input type="text" id="moCampName" placeholder="e.g. Summer Sale" maxlength="60"/>
+    </div>
+    <input type="hidden" id="moCampId"/>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moCamp')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCampaign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit Spend Log ══ -->
+<div class="mo" id="moSpend">
+  <div class="mo-box">
+    <h3>Edit Spend Entry</h3>
+    <div class="mo-field"><label>Date</label><input type="date" id="msDate"/></div>
+    <div class="mo-field"><label>Spent Amount (৳)</label><input type="number" id="msAmt" min="0" step="0.01"/></div>
+    <input type="hidden" id="msId"/>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moSpend')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSpendEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit Balance Top-up ══ -->
+<div class="mo" id="moTopup">
+  <div class="mo-box">
+    <h3>Edit Balance Top-up</h3>
+    <div class="mo-field"><label>Date</label><input type="date" id="mtDate"/></div>
+    <div class="mo-field"><label>Amount (৳)</label><input type="number" id="mtAmt" min="0" step="0.01"/></div>
+    <div class="mo-field"><label>Note (optional)</label><input type="text" id="mtNote" placeholder="e.g. Bank transfer"/></div>
+    <input type="hidden" id="mtId"/>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moTopup')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTopupEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Balance History ══ -->
+<div class="mo" id="mobalHist">
+  <div class="mo-box">
+    <h3>💰 Balance Top-up History</h3>
+    <div id="balHistList"></div>
+    <div class="mo-actions"><button class="btn btn-ghost" onclick="closeMo('mobalHist')">Close</button></div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   STORAGE KEYS
+══════════════════════════════════════════════════════════ */
+const K = {
+  balance:   'pt_balance',
+  campaigns: 'pt_campaigns',
+  logs:      'pt_logs',    // spend logs
+  topups:    'pt_topups',  // balance top-up history
+};
+
+/* ══════════════════════════════════════════════════════════
+   STATE — loaded from localStorage
+══════════════════════════════════════════════════════════ */
+let S = {
+  balance:   parseFloat(localStorage.getItem(K.balance) || '0'),
+  campaigns: JSON.parse(localStorage.getItem(K.campaigns) || '[]'),
+  logs:      JSON.parse(localStorage.getItem(K.logs)     || '[]'),
+  topups:    JSON.parse(localStorage.getItem(K.topups)   || '[]'),
+};
+
+/* ══════════════════════════════════════════════════════════
+   SAVE
+══════════════════════════════════════════════════════════ */
+function save() {
+  localStorage.setItem(K.balance,   S.balance);
+  localStorage.setItem(K.campaigns, JSON.stringify(S.campaigns));
+  localStorage.setItem(K.logs,      JSON.stringify(S.logs));
+  localStorage.setItem(K.topups,    JSON.stringify(S.topups));
+}
+
+/* ══════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════ */
+const fmt   = n => '৳' + parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const today = () => new Date().toISOString().split('T')[0];
+const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `show ${type}`;
+  clearTimeout(t._t); t._t = setTimeout(() => t.className='', 3000);
+}
+
+function openMo(id)  { document.getElementById(id).classList.add('open'); }
+function closeMo(id) { document.getElementById(id).classList.remove('open'); }
+
+/* ══════════════════════════════════════════════════════════
+   1. BALANCE — ADD (saves to topup history)
+══════════════════════════════════════════════════════════ */
+function addBalance() {
+  const amt  = parseFloat(document.getElementById('addBalAmt').value);
+  const date = document.getElementById('addBalDate').value || today();
+  const note = document.getElementById('addBalNote').value.trim() || 'Balance added';
+  if (isNaN(amt) || amt <= 0) { toast('Valid amount enter korun.','err'); return; }
+
+  S.balance += amt;
+
+  // Save to top-up history — newest first
+  S.topups.unshift({ id: uid(), date, amount: amt, note, balanceAfter: S.balance });
+
+  save(); renderAll();
+  document.getElementById('addBalAmt').value  = '';
+  document.getElementById('addBalNote').value = '';
+  toast(`${fmt(amt)} balance add hoyeche!`);
+}
+
+/* ── Open balance history modal ── */
+function openBalHistory() {
+  renderBalHistList();
+  openMo('mobalHist');
+}
+
+/* ── Render top-up list inside modal ── */
+function renderBalHistList() {
+  const el = document.getElementById('balHistList');
+  if (!S.topups.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">💰</div>Kono top-up nei.</div>'; return;
+  }
+  el.innerHTML = S.topups.map(t => `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <div style="flex:1;min-width:130px">
+        <div style="font-weight:700;font-size:.9rem;color:var(--green)">${fmt(t.amount)}</div>
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">${t.date}&nbsp;·&nbsp;${esc(t.note||'')}</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">After:&nbsp;${fmt(t.balanceAfter)}</div>
+      <div style="display:flex;gap:3px">
+        <button class="btn btn-edit" onclick="openTopupEdit('${t.id}')">✏️</button>
+        <button class="btn btn-danger" onclick="deleteTopup('${t.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ── Edit top-up ── */
+function openTopupEdit(id) {
+  const t = S.topups.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('mtId').value   = id;
+  document.getElementById('mtAmt').value  = t.amount;
+  document.getElementById('mtDate').value = t.date;
+  document.getElementById('mtNote').value = t.note || '';
+  // Close balance history modal, open edit modal
+  closeMo('mobalHist');
+  openMo('moTopup');
+  setTimeout(() => document.getElementById('mtAmt').focus(), 120);
+}
+
+function saveTopupEdit() {
+  const id  = document.getElementById('mtId').value;
+  const amt = parseFloat(document.getElementById('mtAmt').value);
+  const dt  = document.getElementById('mtDate').value;
+  const nt  = document.getElementById('mtNote').value.trim() || 'Balance added';
+  if (isNaN(amt) || amt < 0) { toast('Valid amount enter korun.','err'); return; }
+
+  const t = S.topups.find(x => x.id === id);
+  if (!t) return;
+
+  const diff   = amt - t.amount; // positive = more added; negative = reduced
+  S.balance   += diff;
+  t.amount     = amt;
+  t.date       = dt;
+  t.note       = nt;
+  t.balanceAfter = S.balance;
+
+  save(); closeMo('moTopup'); renderAll();
+  // Reopen balance history so user can continue editing
+  renderBalHistList(); openMo('mobalHist');
+  toast('Top-up updated!');
+}
+
+function deleteTopup(id) {
+  const t = S.topups.find(x => x.id === id);
+  if (!t) return;
+  if (!confirm(`${fmt(t.amount)} top-up delete korben?`)) return;
+  S.balance -= t.amount;
+  S.topups   = S.topups.filter(x => x.id !== id);
+  save(); renderAll(); renderBalHistList();
+  toast('Top-up deleted.','err');
+}
+
+/* ══════════════════════════════════════════════════════════
+   2. CAMPAIGN MANAGEMENT
+══════════════════════════════════════════════════════════ */
+function openAddCamp() {
+  document.getElementById('moCampTitle').textContent = 'New Campaign';
+  document.getElementById('moCampName').value = '';
+  document.getElementById('moCampId').value   = '';
+  openMo('moCamp');
+  setTimeout(() => document.getElementById('moCampName').focus(), 120);
+}
+
+function openEditCamp(id) {
+  const c = S.campaigns.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('moCampTitle').textContent = 'Edit Campaign';
+  document.getElementById('moCampName').value = c.name;
+  document.getElementById('moCampId').value   = c.id;
+  openMo('moCamp');
+  setTimeout(() => document.getElementById('moCampName').focus(), 120);
+}
+
+function saveCampaign() {
+  const name   = document.getElementById('moCampName').value.trim();
+  const editId = document.getElementById('moCampId').value;
+  if (!name) { toast('Campaign name laagbe.','err'); return; }
+
+  if (editId) {
+    const c = S.campaigns.find(x => x.id === editId);
+    if (c) {
+      c.name = name;
+      // Sync name in spend logs
+      S.logs.forEach(l => { if (l.campaignId === editId) l.campaignName = name; });
+      toast(`Campaign rename hoyeche: "${name}"`);
+    }
+  } else {
+    S.campaigns.push({ id: uid(), name, totalSpent: 0, createdAt: today() });
+    toast(`Campaign create hoyeche: "${name}"`);
+  }
+  save(); closeMo('moCamp'); renderAll();
+}
+
+function deleteCampaign(id) {
+  const c = S.campaigns.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm(`"${c.name}" delete korben? Purono logs thakbe.`)) return;
+  S.campaigns = S.campaigns.filter(x => x.id !== id);
+  save(); renderAll(); toast('Campaign deleted.','err');
+}
+
+/* ══════════════════════════════════════════════════════════
+   3. SPEND ENTRY — with custom date picker
+══════════════════════════════════════════════════════════ */
+function setSpendToday() {
+  document.getElementById('spendDate').value = today();
+  toast('Date set to today.');
+}
+
+function submitSpend() {
+  const date   = document.getElementById('spendDate').value || today();
+  const inputs = document.querySelectorAll('.ds-input');
+  let total = 0;
+  const entries = [];
+
+  inputs.forEach(inp => {
+    const val = parseFloat(inp.value) || 0;
+    if (val > 0) { entries.push({ campaignId: inp.dataset.id, amount: val }); total += val; }
+  });
+
+  if (!entries.length) { toast('Kono amount enter kora hoyni.','err'); return; }
+  if (total > S.balance) {
+    if (!confirm(`Warning: Total spend ${fmt(total)} balance ${fmt(S.balance)} er beshi. Continue korben?`)) return;
+  }
+
+  S.balance -= total;
+
+  entries.forEach(e => {
+    const c = S.campaigns.find(x => x.id === e.campaignId);
+    if (!c) return;
+    c.totalSpent = (c.totalSpent || 0) + e.amount;
+
+    // Save spend log
+    S.logs.unshift({
+      id:            uid(),
+      date,
+      campaignId:    c.id,
+      campaignName:  c.name,
+      todaySpent:    e.amount,
+      campaignTotal: c.totalSpent,
+      balanceAfter:  S.balance,
+    });
+  });
+
+  save();
+  inputs.forEach(i => i.value = '');
+  updatePreview();
+  renderAll();
+  toast(`Spend submit hoyeche! Balance: ${fmt(S.balance)}`);
+}
+
+function updatePreview() {
+  let t = 0;
+  document.querySelectorAll('.ds-input').forEach(i => t += parseFloat(i.value)||0);
+  const el = document.getElementById('todayPrev');
+  if (el) el.textContent = fmt(t);
+}
+
+/* ── Edit spend log ── */
+function openSpendEdit(id) {
+  const l = S.logs.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('msId').value   = id;
+  document.getElementById('msAmt').value  = l.todaySpent;
+  document.getElementById('msDate').value = l.date;
+  openMo('moSpend');
+  setTimeout(() => document.getElementById('msAmt').focus(), 120);
+}
+
+function saveSpendEdit() {
+  const id  = document.getElementById('msId').value;
+  const amt = parseFloat(document.getElementById('msAmt').value);
+  const dt  = document.getElementById('msDate').value;
+  if (isNaN(amt) || amt < 0) { toast('Valid amount enter korun.','err'); return; }
+
+  const l = S.logs.find(x => x.id === id);
+  if (!l) return;
+
+  const diff = amt - l.todaySpent; // extra spend (+) or refund (-)
+  S.balance -= diff;
+
+  const c = S.campaigns.find(x => x.id === l.campaignId);
+  if (c) c.totalSpent = Math.max(0, (c.totalSpent||0) + diff);
+
+  l.todaySpent    = amt;
+  l.date          = dt;
+  l.campaignTotal = c ? c.totalSpent : l.campaignTotal;
+  l.balanceAfter  = S.balance;
+
+  save(); closeMo('moSpend'); renderAll();
+  toast('Spend entry updated!');
+}
+
+function deleteSpend(id) {
+  const l = S.logs.find(x => x.id === id);
+  if (!l) return;
+  if (!confirm('Ei spend entry delete korben? Balance adjust hobe.')) return;
+
+  S.balance += l.todaySpent;
+  const c = S.campaigns.find(x => x.id === l.campaignId);
+  if (c) c.totalSpent = Math.max(0, (c.totalSpent||0) - l.todaySpent);
+
+  S.logs = S.logs.filter(x => x.id !== id);
+  save(); renderAll(); toast('Spend entry deleted.','err');
+}
+
+function confirmClearAll() {
+  if (!S.logs.length && !S.topups.length) { toast('Kono log nei.','err'); return; }
+  if (!confirm('Sob logs (spends + top-ups) delete korben?')) return;
+  S.logs   = [];
+  S.topups = [];
+  save(); renderAll(); toast('Sob log clear hoyeche.','err');
+}
+
+/* ══════════════════════════════════════════════════════════
+   TABS & FILTERS
+══════════════════════════════════════════════════════════ */
+let activeTab = 'all';
+
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderLogs();
+}
+
+function clearFilters() {
+  document.getElementById('fDate').value = '';
+  document.getElementById('fCamp').value = '';
+  renderLogs();
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER — UNIFIED HISTORY TABLE
+   Merges spend logs + top-up logs into one timeline
+══════════════════════════════════════════════════════════ */
+function renderLogs() {
+  const tbody = document.getElementById('logBody');
+  const fDate = document.getElementById('fDate').value;
+  const fCamp = document.getElementById('fCamp').value;
+
+  // Build unified list from both sources
+  let unified = [];
+
+  S.logs.forEach(l => unified.push({ ...l, _type: 'spend' }));
+
+  S.topups.forEach(t => unified.push({
+    id: t.id, date: t.date, _type: 'topup',
+    campaignName: t.note || 'Balance Top-up',
+    campaignId: '',
+    todaySpent: null, topupAmt: t.amount,
+    campaignTotal: null, balanceAfter: t.balanceAfter,
+  }));
+
+  // Default sort: newest first
+  unified.sort((a,b) => b.date.localeCompare(a.date));
+
+  // Tab filter
+  if (activeTab === 'spend')    unified = unified.filter(x => x._type === 'spend');
+  if (activeTab === 'topup')    unified = unified.filter(x => x._type === 'topup');
+  if (activeTab === 'campaign') {
+    unified = unified.filter(x => x._type === 'spend');
+    unified.sort((a,b) => a.campaignName.localeCompare(b.campaignName) || b.date.localeCompare(a.date));
+  }
+
+  // Date filter
+  if (fDate) unified = unified.filter(x => x.date === fDate);
+
+  // Campaign filter (only applies to spend rows)
+  if (fCamp) unified = unified.filter(x => x.campaignId === fCamp);
+
+  if (!unified.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono entry nei.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = unified.map(row => {
+    if (row._type === 'topup') {
+      return `<tr class="fu">
+        <td class="mono">${row.date}</td>
+        <td><span class="pill topup">⬆ TOP-UP</span></td>
+        <td class="bold">${esc(row.campaignName)}</td>
+        <td class="grn">${fmt(row.topupAmt)}</td>
+        <td class="mono" style="color:var(--text3)">—</td>
+        <td class="${row.balanceAfter>=0?'grn':'red'}">${fmt(row.balanceAfter)}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openTopupEdit('${row.id}')">✏️</button>
+          <button class="btn btn-danger" onclick="deleteTopup('${row.id}')">✕</button>
+        </td>
+      </tr>`;
+    } else {
+      return `<tr class="fu">
+        <td class="mono">${row.date}</td>
+        <td><span class="pill spend">⬇ SPEND</span></td>
+        <td class="bold">${esc(row.campaignName)}</td>
+        <td class="red">${fmt(row.todaySpent)}</td>
+        <td class="ylw">${fmt(row.campaignTotal)}</td>
+        <td class="${row.balanceAfter>=0?'grn':'red'}">${fmt(row.balanceAfter)}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openSpendEdit('${row.id}')">✏️</button>
+          <button class="btn btn-danger" onclick="deleteSpend('${row.id}')">✕</button>
+        </td>
+      </tr>`;
+    }
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER — CAMPAIGN LIST
+══════════════════════════════════════════════════════════ */
+function renderCampaigns() {
+  const el = document.getElementById('campList');
+  if (!S.campaigns.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">📋</div>No campaigns yet.</div>'; return;
+  }
+  el.innerHTML = S.campaigns.map(c => `
+    <div class="camp-item fu">
+      <div class="camp-info">
+        <div class="camp-name-row">${esc(c.name)} <span class="badge">ACTIVE</span></div>
+        <div class="camp-sub">Total Spent: <span>${fmt(c.totalSpent||0)}</span></div>
+      </div>
+      <div class="camp-actions">
+        <button class="btn btn-edit" onclick="openEditCamp('${c.id}')">✏️</button>
+        <button class="btn btn-danger" onclick="deleteCampaign('${c.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER — DAILY SPEND INPUT ROWS
+══════════════════════════════════════════════════════════ */
+function renderDailyInputs() {
+  const el  = document.getElementById('dailyList');
+  const bar = document.getElementById('submitBar');
+
+  if (!S.campaigns.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">💸</div>Add a campaign first.</div>';
+    bar.style.display = 'none'; return;
+  }
+
+  bar.style.display = 'flex';
+  el.innerHTML = S.campaigns.map(c => `
+    <div class="daily-row fu">
+      <div class="d-name">
+        ${esc(c.name)}
+        <small>Running: ${fmt(c.totalSpent||0)}</small>
+      </div>
+      <input type="number" class="ds-input d-num" data-id="${c.id}"
+        placeholder="৳ Spent" min="0" step="0.01" oninput="updatePreview()"/>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER — CAMPAIGN FILTER SELECT
+══════════════════════════════════════════════════════════ */
+function renderFilterSelect() {
+  const sel = document.getElementById('fCamp');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Campaigns</option>' +
+    S.campaigns.map(c => `<option value="${c.id}" ${cur===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER — STAT CARDS
+══════════════════════════════════════════════════════════ */
+function renderStats() {
+  const td = today();
+  const todaySpd = S.logs.filter(l=>l.date===td).reduce((s,l)=>s+l.todaySpent,0);
+  const allTime  = S.campaigns.reduce((s,c)=>s+(c.totalSpent||0),0);
+  const totalAdd = S.topups.reduce((s,t)=>s+t.amount,0);
+
+  document.getElementById('sSpdToday').textContent   = fmt(todaySpd);
+  document.getElementById('sAllTime').textContent    = fmt(allTime);
+  document.getElementById('sTotalAdded').textContent = fmt(totalAdd);
+  document.getElementById('sCampCount').textContent  = S.campaigns.length;
+  document.getElementById('sLogCount').textContent   = S.logs.length + S.topups.length;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER — BALANCE DISPLAY
+══════════════════════════════════════════════════════════ */
+function renderBalance() {
+  const el = document.getElementById('balDisplay');
+  el.textContent = fmt(S.balance);
+  el.classList.toggle('low', S.balance < 0);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER ALL
+══════════════════════════════════════════════════════════ */
+function renderAll() {
+  renderBalance();
+  renderStats();
+  renderCampaigns();
+  renderDailyInputs();
+  renderFilterSelect();
+  renderLogs();
+}
+
+/* ══════════════════════════════════════════════════════════
+   KEYBOARD & CLICK-OUTSIDE
+══════════════════════════════════════════════════════════ */
+const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist'];
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') ALL_MODALS.forEach(closeMo);
+});
+ALL_MODALS.forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) closeMo(id);
+  });
+});
+document.getElementById('addBalAmt').addEventListener('keydown',   e => { if(e.key==='Enter') addBalance(); });
+document.getElementById('moCampName').addEventListener('keydown',  e => { if(e.key==='Enter') saveCampaign(); });
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════ */
+document.getElementById('spendDate').value  = today();
+document.getElementById('addBalDate').value = today();
+document.getElementById('headerDate').textContent =
+  new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+renderAll();
+</script>
+</body>
+</html>
