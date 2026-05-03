@@ -5,6 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Printiut — Meta Ad Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAYhWSC8YFIBhAXSEF8aEwUrBwDy4eTPBM",
+      authDomain: "p28-meta-ad-tracking.firebaseapp.com",
+      projectId: "p28-meta-ad-tracking",
+      storageBucket: "p28-meta-ad-tracking.firebasestorage.app",
+      messagingSenderId: "193259532753",
+      appId: "1:193259532753:web:7529cc6ee0582e3c78b0f0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+    const REF = doc(db, 'adtracker', 'main');
+
+    // Expose to global scope for non-module script
+    window._fbReady = false;
+    window._fbSave  = async (data) => {
+      await setDoc(REF, data);
+    };
+    window._fbListen = (cb) => {
+      onSnapshot(REF, snap => {
+        if (snap.exists()) cb(snap.data());
+      });
+    };
+    window._fbGet = async () => {
+      const snap = await getDoc(REF);
+      return snap.exists() ? snap.data() : null;
+    };
+    window._fbReady = true;
+    window.dispatchEvent(new Event('fbReady'));
+  </script>
   <style>
     :root {
       --bg:      #0d0f12;
@@ -251,7 +286,50 @@
   </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- ══════════ LOGIN SCREEN ══════════ -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:#0d0f12;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;
+">
+  <div style="
+    background:#141720;border:1px solid #2e3550;border-radius:16px;
+    padding:36px 32px;width:100%;max-width:360px;
+    box-shadow:0 8px 40px rgba(0,0,0,0.6);
+  ">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:1.7rem;font-weight:800;letter-spacing:-.03em">Printiut</div>
+      <div style="font-family:'DM Mono',monospace;font-size:.68rem;color:#3d7eff;letter-spacing:.12em;text-transform:uppercase;margin-top:4px">Meta Ad Tracker</div>
+    </div>
+    <div style="margin-bottom:13px">
+      <label style="font-family:'DM Mono',monospace;font-size:.67rem;letter-spacing:.1em;text-transform:uppercase;color:#525c72;display:block;margin-bottom:5px">Username</label>
+      <input id="loginUser" type="text" placeholder="admin"
+        style="width:100%;background:rgba(255,255,255,.05);border:1px solid #2e3550;border-radius:10px;color:#e8ecf4;font-family:'DM Mono',monospace;font-size:.88rem;padding:10px 13px;outline:none;"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-family:'DM Mono',monospace;font-size:.67rem;letter-spacing:.1em;text-transform:uppercase;color:#525c72;display:block;margin-bottom:5px">Password</label>
+      <input id="loginPass" type="password" placeholder="••••"
+        style="width:100%;background:rgba(255,255,255,.05);border:1px solid #2e3550;border-radius:10px;color:#e8ecf4;font-family:'DM Mono',monospace;font-size:.88rem;padding:10px 13px;outline:none;"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div id="loginErr" style="color:#ff4e6a;font-family:'DM Mono',monospace;font-size:.75rem;margin-bottom:12px;display:none;text-align:center">
+      ভুল username বা password!
+    </div>
+    <button onclick="doLogin()" style="
+      width:100%;padding:11px;background:#3d7eff;color:#fff;border:none;border-radius:10px;
+      font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;
+      transition:background .18s;
+    " onmouseover="this.style.background='#5590ff'" onmouseout="this.style.background='#3d7eff'">
+      Login →
+    </button>
+    <div id="loginStatus" style="text-align:center;margin-top:12px;font-family:'DM Mono',monospace;font-size:.7rem;color:#525c72"></div>
+  </div>
+</div>
+
+<div class="wrap" id="appWrap" style="display:none">
 
   <!-- ══════════ HEADER ══════════ -->
   <header class="site-header">
@@ -259,7 +337,10 @@
       <div class="logo-name">Printiut</div>
       <div class="logo-sub">Meta Ad Tracker</div>
     </div>
-    <div class="header-date" id="headerDate"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="header-date" id="headerDate"></div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Logout" style="font-size:.75rem">⏻ Logout</button>
+    </div>
   </header>
 
   <!-- ══════════ BALANCE HERO ══════════ -->
@@ -319,7 +400,7 @@
       <!-- Date picker — default today, can change to any date -->
       <div class="date-pick-row">
         <label>Entry Date</label>
-        <input type="date" id="spendDate"/>
+        <input type="date" id="spendDate" onchange="renderDailyInputs(); updatePreview();"/>
         <button class="btn btn-ghost btn-sm" onclick="setSpendToday()">Today</button>
       </div>
 
@@ -377,7 +458,7 @@
     </div>
   </div>
 
-</div><!-- /wrap -->
+</div><!-- /appWrap -->
 
 <!-- TOAST -->
 <div id="toast"></div>
@@ -438,33 +519,114 @@
 
 <script>
 /* ══════════════════════════════════════════════════════════
-   STORAGE KEYS
+   LOGIN
 ══════════════════════════════════════════════════════════ */
-const K = {
-  balance:   'pt_balance',
-  campaigns: 'pt_campaigns',
-  logs:      'pt_logs',    // spend logs
-  topups:    'pt_topups',  // balance top-up history
-};
+const CRED = { user: 'admin', pass: '1234' };
+
+function doLogout() {
+  if (!confirm('Logout korben?')) return;
+  loggedIn = false;
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('loginStatus').textContent = '';
+  setTimeout(() => document.getElementById('loginUser').focus(), 100);
+}
+let loggedIn = false;
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const statusEl = document.getElementById('loginStatus');
+  if (u === CRED.user && p === CRED.pass) {
+    errEl.style.display = 'none';
+    statusEl.textContent = 'Connecting to Firebase...';
+    loggedIn = true;
+    initApp();
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
 
 /* ══════════════════════════════════════════════════════════
-   STATE — loaded from localStorage
+   STATE
 ══════════════════════════════════════════════════════════ */
 let S = {
-  balance:   parseFloat(localStorage.getItem(K.balance) || '0'),
-  campaigns: JSON.parse(localStorage.getItem(K.campaigns) || '[]'),
-  logs:      JSON.parse(localStorage.getItem(K.logs)     || '[]'),
-  topups:    JSON.parse(localStorage.getItem(K.topups)   || '[]'),
+  balance:   0,
+  campaigns: [],
+  logs:      [],
+  topups:    [],
 };
 
 /* ══════════════════════════════════════════════════════════
-   SAVE
+   SAVE — writes to Firestore
 ══════════════════════════════════════════════════════════ */
+let _saveTimeout = null;
 function save() {
-  localStorage.setItem(K.balance,   S.balance);
-  localStorage.setItem(K.campaigns, JSON.stringify(S.campaigns));
-  localStorage.setItem(K.logs,      JSON.stringify(S.logs));
-  localStorage.setItem(K.topups,    JSON.stringify(S.topups));
+  // Debounce saves — wait 600ms after last call
+  clearTimeout(_saveTimeout);
+  _saveTimeout = setTimeout(async () => {
+    if (!window._fbReady) return;
+    try {
+      await window._fbSave({
+        balance:   S.balance,
+        campaigns: S.campaigns,
+        logs:      S.logs,
+        topups:    S.topups,
+      });
+    } catch(e) { console.error('Firebase save error:', e); }
+  }, 600);
+}
+
+/* ══════════════════════════════════════════════════════════
+   INIT APP — called after login
+══════════════════════════════════════════════════════════ */
+async function initApp() {
+  const statusEl = document.getElementById('loginStatus');
+
+  const run = async () => {
+    statusEl.textContent = 'Loading data...';
+    try {
+      const data = await window._fbGet();
+      if (data) {
+        S.balance   = parseFloat(data.balance   || 0);
+        S.campaigns = data.campaigns || [];
+        S.logs      = data.logs      || [];
+        S.topups    = data.topups    || [];
+      }
+    } catch(e) { console.error('Firebase load error:', e); }
+
+    // Show app
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appWrap').style.display     = '';
+
+    // Set up date fields
+    document.getElementById('spendDate').value  = today();
+    document.getElementById('addBalDate').value = today();
+    document.getElementById('headerDate').textContent =
+      new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    renderAll();
+
+    // Live sync from Firestore
+    window._fbListen(data => {
+      S.balance   = parseFloat(data.balance   || 0);
+      S.campaigns = data.campaigns || [];
+      S.logs      = data.logs      || [];
+      S.topups    = data.topups    || [];
+      renderAll();
+    });
+  };
+
+  if (window._fbReady) {
+    run();
+  } else {
+    window.addEventListener('fbReady', run, { once: true });
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -638,33 +800,51 @@ function setSpendToday() {
 function submitSpend() {
   const date   = document.getElementById('spendDate').value || today();
   const inputs = document.querySelectorAll('.ds-input');
-  let total = 0;
+  let totalNewSpent = 0;
   const entries = [];
+  let hasError = false;
 
   inputs.forEach(inp => {
-    const val = parseFloat(inp.value) || 0;
-    if (val > 0) { entries.push({ campaignId: inp.dataset.id, amount: val }); total += val; }
+    const raw = inp.value.trim();
+    if (raw === '') return; // skip empty fields
+    const newTotalSpent = parseFloat(raw);
+    if (isNaN(newTotalSpent)) return;
+    const c = S.campaigns.find(x => x.id === inp.dataset.id);
+    if (!c) return;
+    // Find the most recent log for this campaign BEFORE the selected date
+    const prevLog = S.logs
+      .filter(l => l.campaignId === c.id && l.date < date)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const prevTotal = prevLog ? prevLog.campaignTotal : 0;
+    const newSpent  = newTotalSpent - prevTotal; // difference = actual spend for this entry
+    if (newSpent < 0) {
+      toast(`"${c.name}": Total Spent (${fmt(newTotalSpent)}) selected date er age er total (${fmt(prevTotal)}) er kom hote parbe na.`, 'err');
+      hasError = true;
+      return;
+    }
+    entries.push({ campaignId: inp.dataset.id, newSpent, newTotalSpent });
+    totalNewSpent += newSpent;
   });
 
+  if (hasError) return;
   if (!entries.length) { toast('Kono amount enter kora hoyni.','err'); return; }
-  if (total > S.balance) {
-    if (!confirm(`Warning: Total spend ${fmt(total)} balance ${fmt(S.balance)} er beshi. Continue korben?`)) return;
+  if (totalNewSpent > S.balance) {
+    if (!confirm(`Warning: New spend ${fmt(totalNewSpent)} balance ${fmt(S.balance)} er beshi. Continue korben?`)) return;
   }
 
-  S.balance -= total;
+  S.balance -= totalNewSpent;
 
   entries.forEach(e => {
     const c = S.campaigns.find(x => x.id === e.campaignId);
     if (!c) return;
-    c.totalSpent = (c.totalSpent || 0) + e.amount;
+    c.totalSpent = e.newTotalSpent; // set to new cumulative total directly
 
-    // Save spend log
     S.logs.unshift({
       id:            uid(),
       date,
       campaignId:    c.id,
       campaignName:  c.name,
-      todaySpent:    e.amount,
+      todaySpent:    e.newSpent,       // actual new spend (difference)
       campaignTotal: c.totalSpent,
       balanceAfter:  S.balance,
     });
@@ -678,8 +858,22 @@ function submitSpend() {
 }
 
 function updatePreview() {
+  const date = document.getElementById('spendDate').value || today();
   let t = 0;
-  document.querySelectorAll('.ds-input').forEach(i => t += parseFloat(i.value)||0);
+  document.querySelectorAll('.ds-input').forEach(inp => {
+    const raw = inp.value.trim();
+    if (raw === '') return;
+    const newTotal = parseFloat(raw);
+    if (isNaN(newTotal)) return;
+    const c = S.campaigns.find(x => x.id === inp.dataset.id);
+    if (!c) return;
+    const prevLog = S.logs
+      .filter(l => l.campaignId === c.id && l.date < date)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const prevTotal = prevLog ? prevLog.campaignTotal : 0;
+    const diff = newTotal - prevTotal;
+    if (diff > 0) t += diff;
+  });
   const el = document.getElementById('todayPrev');
   if (el) el.textContent = fmt(t);
 }
@@ -868,16 +1062,23 @@ function renderDailyInputs() {
   }
 
   bar.style.display = 'flex';
-  el.innerHTML = S.campaigns.map(c => `
+  const date = document.getElementById('spendDate').value || today();
+  el.innerHTML = S.campaigns.map(c => {
+    const prevLog = S.logs
+      .filter(l => l.campaignId === c.id && l.date < date)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const prevTotal = prevLog ? prevLog.campaignTotal : 0;
+    return `
     <div class="daily-row fu">
       <div class="d-name">
         ${esc(c.name)}
-        <small>Running: ${fmt(c.totalSpent||0)}</small>
+        <small>Previous Total: ${fmt(prevTotal)}</small>
       </div>
       <input type="number" class="ds-input d-num" data-id="${c.id}"
-        placeholder="৳ Spent" min="0" step="0.01" oninput="updatePreview()"/>
+        placeholder="৳ Total Spent" min="0" step="0.01" oninput="updatePreview()"/>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -943,14 +1144,11 @@ document.getElementById('addBalAmt').addEventListener('keydown',   e => { if(e.k
 document.getElementById('moCampName').addEventListener('keydown',  e => { if(e.key==='Enter') saveCampaign(); });
 
 /* ══════════════════════════════════════════════════════════
-   INIT
+   INIT — focus login field on load
 ══════════════════════════════════════════════════════════ */
-document.getElementById('spendDate').value  = today();
-document.getElementById('addBalDate').value = today();
-document.getElementById('headerDate').textContent =
-  new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-
-renderAll();
+window.addEventListener('load', () => {
+  document.getElementById('loginUser').focus();
+});
 </script>
 </body>
 </html>
