@@ -276,12 +276,149 @@
     @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .fu { animation:fadeUp .35s ease both; }
 
-    @media(max-width:600px){
-      .bal-amount { font-size:2rem; }
-      .balance-hero { padding:18px; }
-      .wrap { padding:14px 12px 60px; }
-      #toast { left:14px; right:14px; bottom:14px; }
+    /* ══════════════════════════════════════════════════
+       RESPONSIVE — TABLET (≤900px)
+    ══════════════════════════════════════════════════ */
+    @media(max-width:900px){
+      .stats-grid { grid-template-columns: repeat(3,1fr); }
+      .wrap { padding:20px 16px 80px; }
+    }
+
+    /* ══════════════════════════════════════════════════
+       RESPONSIVE — MOBILE (≤660px)
+    ══════════════════════════════════════════════════ */
+    @media(max-width:660px){
+      /* General */
+      .wrap { padding:12px 12px 140px; } /* extra bottom for quick-spend bar */
+
+      /* Header */
+      .site-header { margin-bottom:16px; padding-bottom:12px; gap:8px; }
+      .logo-name { font-size:1.3rem; }
+      .header-date { display:none; } /* hide date on small screens */
+
+      /* Balance Hero — stack vertically */
+      .balance-hero { flex-direction:column; padding:18px 16px; gap:14px; margin-bottom:14px; }
+      .bal-amount { font-size:2.4rem; }
       .add-bal-form { min-width:100%; max-width:100%; }
+      .add-bal-row { flex-wrap:wrap; }
+      .add-bal-row input { min-width:0; }
+
+      /* Stats grid — 2 col on mobile */
+      .stats-grid { grid-template-columns: repeat(2,1fr); gap:9px; margin-bottom:14px; }
+      .stat-card { padding:13px 14px; }
+      .s-value { font-size:1.2rem; }
+
+      /* two-col panels → single col */
+      .two-col { grid-template-columns:1fr; gap:12px; margin-bottom:14px; }
+
+      /* Panel */
+      .panel { padding:15px 13px; border-radius:10px; }
+      .panel-title { font-size:.88rem; margin-bottom:12px; }
+
+      /* Campaign items */
+      .camp-item { padding:11px 12px; }
+      .camp-name-row { font-size:.83rem; }
+
+      /* Daily input rows */
+      .daily-row { padding:10px 11px; gap:8px; }
+      .d-name { font-size:.82rem; }
+      .d-num { width:110px; }
+
+      /* Submit bar */
+      .submit-bar { flex-direction:column; align-items:stretch; gap:8px; }
+      .submit-bar .btn { width:100%; justify-content:center; }
+
+      /* Date pick row */
+      .date-pick-row { padding:8px 10px; gap:8px; }
+
+      /* Tabs — scrollable horizontal */
+      .tabs { width:100%; overflow-x:auto; flex-wrap:nowrap; }
+      .tab-btn { padding:6px 13px; font-size:.75rem; flex-shrink:0; }
+
+      /* Filter row */
+      .filter-row { gap:7px; }
+      .filter-row input[type=date],
+      .filter-row select { font-size:.78rem; padding:7px 9px; }
+
+      /* Table — card style on mobile */
+      .table-wrap { border-radius:var(--r); }
+      table { display:block; }
+      thead { display:none; }
+      tbody { display:block; }
+      tbody tr {
+        display:block;
+        border:1px solid var(--border);
+        border-radius:var(--r);
+        padding:11px 13px;
+        margin-bottom:8px;
+        background:var(--sur2);
+        position:relative;
+      }
+      tbody tr:last-child { border-bottom:1px solid var(--border); margin-bottom:0; }
+      tbody td {
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        padding:4px 0;
+        font-size:.78rem;
+        white-space:normal;
+        border:none;
+        color:var(--text2);
+      }
+      tbody td::before {
+        content: attr(data-label);
+        font-family: var(--mono);
+        font-size:.6rem;
+        letter-spacing:.1em;
+        text-transform:uppercase;
+        color:var(--text3);
+        flex-shrink:0;
+        margin-right:10px;
+      }
+      tbody td:first-child { font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:4px; }
+      tbody td:last-child { justify-content:flex-end; padding-top:8px; border-top:1px solid var(--border); margin-top:4px; }
+
+      /* Toast — above quick bar */
+      #toast { left:12px; right:12px; bottom:100px; max-width:100%; text-align:center; }
+
+      /* Modal — full bottom sheet on mobile */
+      .mo { align-items:flex-end; padding:0; }
+      .mo-box { border-radius:16px 16px 0 0; max-width:100%; padding:22px 18px 30px; }
+      #mobalHist { align-items:flex-end; padding-top:0; }
+      #mobalHist .mo-box { max-height:85vh; border-radius:16px 16px 0 0; }
+    }
+
+    /* ══════════════════════════════════════════════════
+       MOBILE QUICK-SPEND BAR (bottom, mobile only)
+    ══════════════════════════════════════════════════ */
+    #quickSpendBar {
+      display:none; /* hidden on desktop */
+    }
+    @media(max-width:660px){
+      #quickSpendBar {
+        display:flex;
+        position:fixed; bottom:0; left:0; right:0; z-index:200;
+        background:var(--surface);
+        border-top:1px solid var(--bor2);
+        padding:10px 14px 14px;
+        gap:9px;
+        align-items:center;
+        box-shadow:0 -4px 24px rgba(0,0,0,0.4);
+        /* safe area for iOS home bar */
+        padding-bottom: max(14px, env(safe-area-inset-bottom));
+      }
+      #quickSpendBar select {
+        flex:1; font-size:.8rem; padding:10px 10px;
+        border-radius:var(--r);
+      }
+      #quickSpendBar input[type=number] {
+        width:110px; font-size:.88rem; padding:10px 11px;
+        border-radius:var(--r);
+      }
+      #quickSpendBar .btn {
+        padding:10px 14px; font-size:.82rem; flex-shrink:0;
+        border-radius:var(--r);
+      }
     }
   </style>
 </head>
@@ -457,6 +594,17 @@
       </table>
     </div>
   </div>
+
+<!-- ══════════ MOBILE QUICK-SPEND BAR ══════════ -->
+<div id="quickSpendBar">
+  <select id="qsCamp" style="flex:1">
+    <option value="">Campaign...</option>
+  </select>
+  <input type="number" id="qsAmt" placeholder="৳ Total" min="0" step="0.01" style="width:100px"/>
+  <button class="btn btn-primary" onclick="quickSubmit()" style="padding:10px 14px;font-size:.82rem">
+    ✔ Add
+  </button>
+</div>
 
 </div><!-- /appWrap -->
 
@@ -999,12 +1147,12 @@ function renderLogs() {
   tbody.innerHTML = unified.map(row => {
     if (row._type === 'topup') {
       return `<tr class="fu">
-        <td class="mono">${row.date}</td>
-        <td><span class="pill topup">⬆ TOP-UP</span></td>
-        <td class="bold">${esc(row.campaignName)}</td>
-        <td class="grn">${fmt(row.topupAmt)}</td>
-        <td class="mono" style="color:var(--text3)">—</td>
-        <td class="${row.balanceAfter>=0?'grn':'red'}">${fmt(row.balanceAfter)}</td>
+        <td class="mono" data-label="Date">${row.date}</td>
+        <td data-label="Type"><span class="pill topup">⬆ TOP-UP</span></td>
+        <td class="bold" data-label="Description">${esc(row.campaignName)}</td>
+        <td class="grn" data-label="Amount">${fmt(row.topupAmt)}</td>
+        <td class="mono" data-label="Camp. Total" style="color:var(--text3)">—</td>
+        <td class="${row.balanceAfter>=0?'grn':'red'}" data-label="Balance After">${fmt(row.balanceAfter)}</td>
         <td>
           <button class="btn btn-edit" onclick="openTopupEdit('${row.id}')">✏️</button>
           <button class="btn btn-danger" onclick="deleteTopup('${row.id}')">✕</button>
@@ -1012,12 +1160,12 @@ function renderLogs() {
       </tr>`;
     } else {
       return `<tr class="fu">
-        <td class="mono">${row.date}</td>
-        <td><span class="pill spend">⬇ SPEND</span></td>
-        <td class="bold">${esc(row.campaignName)}</td>
-        <td class="red">${fmt(row.todaySpent)}</td>
-        <td class="ylw">${fmt(row.campaignTotal)}</td>
-        <td class="${row.balanceAfter>=0?'grn':'red'}">${fmt(row.balanceAfter)}</td>
+        <td class="mono" data-label="Date">${row.date}</td>
+        <td data-label="Type"><span class="pill spend">⬇ SPEND</span></td>
+        <td class="bold" data-label="Description">${esc(row.campaignName)}</td>
+        <td class="red" data-label="Amount">${fmt(row.todaySpent)}</td>
+        <td class="ylw" data-label="Camp. Total">${fmt(row.campaignTotal)}</td>
+        <td class="${row.balanceAfter>=0?'grn':'red'}" data-label="Balance After">${fmt(row.balanceAfter)}</td>
         <td>
           <button class="btn btn-edit" onclick="openSpendEdit('${row.id}')">✏️</button>
           <button class="btn btn-danger" onclick="deleteSpend('${row.id}')">✕</button>
@@ -1089,6 +1237,62 @@ function renderFilterSelect() {
   const cur = sel.value;
   sel.innerHTML = '<option value="">All Campaigns</option>' +
     S.campaigns.map(c => `<option value="${c.id}" ${cur===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+
+  // Also update quick-spend campaign select (mobile bar)
+  const qs = document.getElementById('qsCamp');
+  if (qs) {
+    const qsCur = qs.value;
+    qs.innerHTML = '<option value="">Campaign seun...</option>' +
+      S.campaigns.map(c => `<option value="${c.id}" ${qsCur===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE QUICK-SPEND SUBMIT
+══════════════════════════════════════════════════════════ */
+function quickSubmit() {
+  const campId = document.getElementById('qsCamp').value;
+  const raw    = document.getElementById('qsAmt').value.trim();
+  if (!campId) { toast('Campaign seun.','err'); return; }
+  if (!raw)    { toast('Total Spent amount dun.','err'); return; }
+
+  const newTotalSpent = parseFloat(raw);
+  if (isNaN(newTotalSpent) || newTotalSpent < 0) { toast('Valid amount dun.','err'); return; }
+
+  const c = S.campaigns.find(x => x.id === campId);
+  if (!c) return;
+
+  const date = today();
+  const prevLog = S.logs
+    .filter(l => l.campaignId === c.id && l.date < date)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  const prevTotal = prevLog ? prevLog.campaignTotal : 0;
+  const newSpent  = newTotalSpent - prevTotal;
+
+  if (newSpent < 0) {
+    toast(`Total (${fmt(newTotalSpent)}) ager total (${fmt(prevTotal)}) er kom hote parbe na.`,'err');
+    return;
+  }
+  if (newSpent === 0) { toast('Kono notun spend nei (same total).','err'); return; }
+  if (newSpent > S.balance) {
+    if (!confirm(`New spend ${fmt(newSpent)} balance ${fmt(S.balance)} er beshi. Continue?`)) return;
+  }
+
+  S.balance -= newSpent;
+  c.totalSpent = newTotalSpent;
+
+  S.logs.unshift({
+    id: uid(), date,
+    campaignId:    c.id,
+    campaignName:  c.name,
+    todaySpent:    newSpent,
+    campaignTotal: c.totalSpent,
+    balanceAfter:  S.balance,
+  });
+
+  save(); renderAll();
+  document.getElementById('qsAmt').value = '';
+  toast(`✔ ${c.name}: ${fmt(newSpent)} spend add hoyeche! Balance: ${fmt(S.balance)}`);
 }
 
 /* ══════════════════════════════════════════════════════════
