@@ -799,50 +799,68 @@ function closeMo(id) { document.getElementById(id).classList.remove('open'); }
    1. BALANCE — ADD (saves to topup history)
 ══════════════════════════════════════════════════════════ */
 /* ══════════════════════════════════════════════════════════
-   RECALC ALL — date-order এ সব entries এর balanceAfter ও
-   campaignTotal পুনরায় হিসাব করে
+   RECALC ALL — সম্পূর্ণ নতুন, সিরিয়াল-নিরাপদ হিসাব
+   ─────────────────────────────────────────────────────────
+   নিয়ম:
+   ১. প্রতিটি entry-তে `seq` (insertion timestamp) থাকে।
+      একই date হলে seq দিয়ে order নির্ধারণ হয়।
+   ২. starting balance = সব topup যোগ − সব spend যোগ
+      (amount fixed, শুধু "after" snapshots পুনরায় লেখা)
+   ৩. timeline oldest→newest walk করে balanceAfter ও
+      campaignTotal প্রতিটি entry-তে লিখে দেওয়া হয়।
+   ৪. S.balance = timeline-এর শেষ balanceAfter
+   ৫. campaign.totalSpent = তার শেষ log-এর campaignTotal
 ══════════════════════════════════════════════════════════ */
 function recalcAll() {
-  // Combine spends + topups into one timeline, sorted oldest first
+  /* step 1 — seq নিশ্চিত করো
+     আমরা unshift করি তাই array[0] = newest
+     index 0 → biggest seq, last index → smallest seq             */
+  S.topups.forEach((t, i) => {
+    if (t.seq === undefined) t.seq = (S.topups.length - i) * 10;
+  });
+  S.logs.forEach((l, i) => {
+    if (l.seq === undefined) l.seq = (S.logs.length - i) * 10;
+  });
+
+  /* step 2 — unified timeline তৈরি (oldest first)               */
   const timeline = [];
-  S.logs.forEach(l => timeline.push({ _type:'spend', ref: l, date: l.date }));
-  S.topups.forEach(t => timeline.push({ _type:'topup', ref: t, date: t.date }));
-  timeline.sort((a, b) => a.date.localeCompare(b.date) || 0);
+  S.logs.forEach(l   => timeline.push({ _type:'spend', ref: l, date: l.date,   seq: l.seq   }));
+  S.topups.forEach(t => timeline.push({ _type:'topup', ref: t, date: t.date,   seq: t.seq   }));
 
-  // Start from initial balance: current balance + all spends - all topups
-  // (we recalc from scratch using original amounts, balance is the running result)
-  // Instead, we keep amounts fixed and only recalc the "after" snapshots.
-  let running = 0;
+  timeline.sort((a, b) => {
+    const dc = a.date.localeCompare(b.date);
+    return dc !== 0 ? dc : (a.seq || 0) - (b.seq || 0);
+  });
 
-  // First pass: calculate what the "starting" balance was
-  // = current balance + total spends - total topups
-  const totalSpends = S.logs.reduce((s, l) => s + l.todaySpent, 0);
-  const totalTopups = S.topups.reduce((s, t) => s + t.amount, 0);
-  running = S.balance + totalSpends - totalTopups; // this is the balance before any entry
+  /* step 3 — starting balance (amounts অপরিবর্তিত রেখে)         */
+  const totalTopups = S.topups.reduce((s, t) => s + (t.amount     || 0), 0);
+  const totalSpends = S.logs.reduce(  (s, l) => s + (l.todaySpent || 0), 0);
+  let running = parseFloat((totalTopups - totalSpends).toFixed(2));
 
-  // Campaign running totals (per campaign)
+  /* step 4 — প্রতিটি entry-র "after" পুনরায় লেখো              */
   const campRunning = {};
 
   timeline.forEach(item => {
     if (item._type === 'topup') {
-      running += item.ref.amount;
-      item.ref.balanceAfter = running;
+      running                += item.ref.amount;
+      running                 = parseFloat(running.toFixed(2));
+      item.ref.balanceAfter   = running;
     } else {
-      running -= item.ref.todaySpent;
-      item.ref.balanceAfter = running;
-      // campaignTotal: cumulative for this campaign up to this entry
-      const cid = item.ref.campaignId;
-      campRunning[cid] = (campRunning[cid] || 0) + item.ref.todaySpent;
-      item.ref.campaignTotal = campRunning[cid];
+      const cid               = item.ref.campaignId;
+      campRunning[cid]        = parseFloat(((campRunning[cid] || 0) + item.ref.todaySpent).toFixed(2));
+      item.ref.campaignTotal  = campRunning[cid];
+      running                -= item.ref.todaySpent;
+      running                 = parseFloat(running.toFixed(2));
+      item.ref.balanceAfter   = running;
     }
   });
 
-  // Update each campaign's totalSpent to the latest campaignTotal from logs
+  /* step 5 — S.balance ও campaign.totalSpent আপডেট             */
+  S.balance = running;
+
   S.campaigns.forEach(c => {
-    const campLogs = S.logs
-      .filter(l => l.campaignId === c.id)
-      .sort((a, b) => b.date.localeCompare(a.date));
-    c.totalSpent = campLogs.length ? campLogs[0].campaignTotal : 0;
+    const campItems = timeline.filter(x => x._type === 'spend' && x.ref.campaignId === c.id);
+    c.totalSpent = campItems.length ? campItems[campItems.length - 1].ref.campaignTotal : 0;
   });
 }
 
@@ -852,12 +870,11 @@ function addBalance() {
   const note = document.getElementById('addBalNote').value.trim() || 'Balance added';
   if (isNaN(amt) || amt <= 0) { toast('Valid amount enter korun.','err'); return; }
 
-  S.balance += amt;
-
   // Save to top-up history — newest first
-  S.topups.unshift({ id: uid(), date, amount: amt, note, balanceAfter: S.balance });
+  // seq = timestamp so same-date entries stay in insertion order
+  S.topups.unshift({ id: uid(), date, amount: amt, note, balanceAfter: 0, seq: Date.now() });
 
-  recalcAll(); // recalculate all balanceAfter in correct date order
+  recalcAll(); // recalcAll computes S.balance & all balanceAfter from scratch
   save(); renderAll();
   document.getElementById('addBalAmt').value  = '';
   document.getElementById('addBalNote').value = '';
@@ -915,14 +932,13 @@ function saveTopupEdit() {
   const t = S.topups.find(x => x.id === id);
   if (!t) return;
 
-  const diff   = amt - t.amount; // positive = more added; negative = reduced
-  S.balance   += diff;
-  t.amount     = amt;
-  t.date       = dt;
-  t.note       = nt;
-  // balanceAfter will be recalculated by recalcAll
+  // Just update the fields; recalcAll will recompute everything
+  t.amount = amt;
+  t.date   = dt;
+  t.note   = nt;
+  // balanceAfter is recalculated by recalcAll
 
-  recalcAll(); // recalculate all entries in date order
+  recalcAll();
   save(); closeMo('moTopup'); renderAll();
   // Reopen balance history so user can continue editing
   renderBalHistList(); openMo('mobalHist');
@@ -933,9 +949,8 @@ function deleteTopup(id) {
   const t = S.topups.find(x => x.id === id);
   if (!t) return;
   if (!confirm(`${fmt(t.amount)} top-up delete korben?`)) return;
-  S.balance -= t.amount;
-  S.topups   = S.topups.filter(x => x.id !== id);
-  recalcAll();
+  S.topups = S.topups.filter(x => x.id !== id);
+  recalcAll(); // recomputes S.balance automatically
   save(); renderAll(); renderBalHistList();
   toast('Top-up deleted.','err');
 }
@@ -1032,25 +1047,24 @@ function submitSpend() {
     if (!confirm(`Warning: New spend ${fmt(totalNewSpent)} balance ${fmt(S.balance)} er beshi. Continue korben?`)) return;
   }
 
-  S.balance -= totalNewSpent;
-
-  entries.forEach(e => {
+  // Insert entries first; recalcAll will compute balanceAfter & campaignTotal correctly
+  const batchSeq = Date.now();
+  entries.forEach((e, idx) => {
     const c = S.campaigns.find(x => x.id === e.campaignId);
     if (!c) return;
-    c.totalSpent = e.newTotalSpent; // set to new cumulative total directly
-
     S.logs.unshift({
       id:            uid(),
       date,
       campaignId:    c.id,
       campaignName:  c.name,
-      todaySpent:    e.newSpent,       // actual new spend (difference)
-      campaignTotal: c.totalSpent,
-      balanceAfter:  S.balance,
+      todaySpent:    e.newSpent,
+      campaignTotal: 0,       // placeholder — recalcAll overwrites this
+      balanceAfter:  0,       // placeholder — recalcAll overwrites this
+      seq:           batchSeq + idx, // same-batch entries get sequential seq
     });
   });
 
-  recalcAll();
+  recalcAll(); // computes everything from scratch
   save();
   inputs.forEach(i => i.value = '');
   updatePreview();
@@ -1102,16 +1116,13 @@ function saveSpendEdit() {
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
 
-  // Adjust running balance by the difference in todaySpent
-  const diff  = amt - l.todaySpent;
-  S.balance  -= diff;
-
+  // Only update the editable fields; recalcAll recomputes everything
   l.todaySpent    = amt;
-  l.campaignTotal = campTotal;
+  l.campaignTotal = campTotal; // recalcAll will overwrite this anyway
   l.date          = dt;
-  // balanceAfter will be recalculated by recalcAll
+  // balanceAfter is recalculated by recalcAll
 
-  recalcAll(); // cascade: fix all subsequent balanceAfter & campaignTotals
+  recalcAll(); // cascades: fixes all balanceAfter & campaignTotals
   save(); closeMo('moSpend'); renderAll();
   toast('Spend entry updated!');
 }
@@ -1121,17 +1132,18 @@ function deleteSpend(id) {
   if (!l) return;
   if (!confirm('Ei spend entry delete korben? Balance adjust hobe.')) return;
 
-  S.balance += l.todaySpent;
   S.logs = S.logs.filter(x => x.id !== id);
-  recalcAll(); // cascade recalc after deletion
+  recalcAll(); // recomputes S.balance automatically
   save(); renderAll(); toast('Spend entry deleted.','err');
 }
 
 function confirmClearAll() {
   if (!S.logs.length && !S.topups.length) { toast('Kono log nei.','err'); return; }
   if (!confirm('Sob logs (spends + top-ups) delete korben?')) return;
-  S.logs   = [];
-  S.topups = [];
+  S.logs    = [];
+  S.topups  = [];
+  S.balance = 0;
+  S.campaigns.forEach(c => c.totalSpent = 0);
   save(); renderAll(); toast('Sob log clear hoyeche.','err');
 }
 
@@ -1165,25 +1177,33 @@ function renderLogs() {
   // Build unified list from both sources
   let unified = [];
 
-  S.logs.forEach(l => unified.push({ ...l, _type: 'spend' }));
+  S.logs.forEach(l => unified.push({ ...l, _type: 'spend', seq: l.seq || 0 }));
 
   S.topups.forEach(t => unified.push({
-    id: t.id, date: t.date, _type: 'topup',
+    id: t.id, date: t.date, _type: 'topup', seq: t.seq || 0,
     campaignName: t.note || 'Balance Top-up',
     campaignId: '',
     todaySpent: null, topupAmt: t.amount,
     campaignTotal: null, balanceAfter: t.balanceAfter,
   }));
 
-  // Default sort: newest first
-  unified.sort((a,b) => b.date.localeCompare(a.date));
+  // Default sort: newest first (date desc, then seq desc for same-date entries)
+  unified.sort((a, b) => {
+    const dc = b.date.localeCompare(a.date);
+    return dc !== 0 ? dc : (b.seq || 0) - (a.seq || 0);
+  });
 
   // Tab filter
   if (activeTab === 'spend')    unified = unified.filter(x => x._type === 'spend');
   if (activeTab === 'topup')    unified = unified.filter(x => x._type === 'topup');
   if (activeTab === 'campaign') {
     unified = unified.filter(x => x._type === 'spend');
-    unified.sort((a,b) => a.campaignName.localeCompare(b.campaignName) || b.date.localeCompare(a.date));
+    unified.sort((a,b) => {
+      const nc = a.campaignName.localeCompare(b.campaignName);
+      if (nc !== 0) return nc;
+      const dc = b.date.localeCompare(a.date);
+      return dc !== 0 ? dc : (b.seq || 0) - (a.seq || 0);
+    });
   }
 
   // Date filter
@@ -1331,19 +1351,17 @@ function quickSubmit() {
     if (!confirm(`New spend ${fmt(newSpent)} balance ${fmt(S.balance)} er beshi. Continue?`)) return;
   }
 
-  S.balance -= newSpent;
-  c.totalSpent = newTotalSpent;
-
   S.logs.unshift({
     id: uid(), date,
     campaignId:    c.id,
     campaignName:  c.name,
     todaySpent:    newSpent,
-    campaignTotal: c.totalSpent,
-    balanceAfter:  S.balance,
+    campaignTotal: 0,      // recalcAll overwrites
+    balanceAfter:  0,      // recalcAll overwrites
+    seq:           Date.now(),
   });
 
-  recalcAll();
+  recalcAll(); // computes S.balance, balanceAfter, campaignTotal
   save(); renderAll();
   document.getElementById('qsAmt').value = '';
   toast(`✔ ${c.name}: ${fmt(newSpent)} spend add hoyeche! Balance: ${fmt(S.balance)}`);
@@ -1354,9 +1372,18 @@ function quickSubmit() {
 ══════════════════════════════════════════════════════════ */
 function renderStats() {
   const td = today();
-  const todaySpd = S.logs.filter(l=>l.date===td).reduce((s,l)=>s+l.todaySpent,0);
-  const allTime  = S.campaigns.reduce((s,c)=>s+(c.totalSpent||0),0);
-  const totalAdd = S.topups.reduce((s,t)=>s+t.amount,0);
+
+  // Today's spend (from logs on today's date)
+  const todaySpd = S.logs.filter(l=>l.date===td).reduce((s,l)=>s+l.todaySpent, 0);
+
+  // All-time total spend (sum of campaign totals = sum of all log amounts)
+  const allTime  = S.logs.reduce((s,l)=>s+l.todaySpent, 0);
+
+  // Total balance added (all topups)
+  const totalAdd = S.topups.reduce((s,t)=>s+t.amount, 0);
+
+  // Current balance = totalAdded - allTimeSpent (same as S.balance after recalcAll)
+  const curBal   = S.balance;
 
   document.getElementById('sSpdToday').textContent   = fmt(todaySpd);
   document.getElementById('sAllTime').textContent    = fmt(allTime);
