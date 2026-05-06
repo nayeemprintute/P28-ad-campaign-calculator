@@ -832,10 +832,8 @@ function recalcAll() {
     return dc !== 0 ? dc : (a.seq || 0) - (b.seq || 0);
   });
 
-  /* step 3 — starting balance (amounts অপরিবর্তিত রেখে)         */
-  const totalTopups = S.topups.reduce((s, t) => s + (t.amount     || 0), 0);
-  const totalSpends = S.logs.reduce(  (s, l) => s + (l.todaySpent || 0), 0);
-  let running = parseFloat((totalTopups - totalSpends).toFixed(2));
+  /* step 3 — starting balance = 0, timeline walk করে হিসাব হবে  */
+  let running = 0;
 
   /* step 4 — প্রতিটি entry-র "after" পুনরায় লেখো              */
   const campRunning = {};
