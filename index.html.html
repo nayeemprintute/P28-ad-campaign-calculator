@@ -1121,10 +1121,20 @@ function canEdit() {
   return false;
 }
 
-/* ── Save users — stored inside main S document ── */
-function saveUsers() {
+/* ── Save users — immediate write to Firestore (no debounce) ── */
+async function saveUsers() {
   S.users = USERS;
-  save();
+  if (!window._fbReady) return;
+  try {
+    await window._fbSave({
+      balance:      S.balance,
+      campaigns:    S.campaigns,
+      logs:         S.logs,
+      topups:       S.topups,
+      salesReports: S.salesReports,
+      users:        S.users,
+    });
+  } catch(e) { console.error('saveUsers error:', e); }
 }
 
 /* ── Wait for Firebase to be ready ── */
@@ -1156,20 +1166,35 @@ async function loadUsers() {
 async function doLogin() {
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginErr');
+  const errEl    = document.getElementById('loginErr');
   const statusEl = document.getElementById('loginStatus');
-  statusEl.textContent = 'Checking credentials...';
-  await loadUsers();
+
+  statusEl.textContent = 'Connecting...';
+  await waitForFb();
+
+  // Load users from Firestore first
+  try {
+    const data = await window._fbGet();
+    if (data && data.users && data.users.length) {
+      USERS = data.users;
+      if (!USERS.find(u => u.id === 'admin')) USERS.unshift(DEFAULT_ADMIN);
+    } else {
+      USERS = [DEFAULT_ADMIN];
+    }
+  } catch(e) {
+    USERS = [DEFAULT_ADMIN];
+  }
+
   const found = USERS.find(x => x.username === u && x.password === p);
   if (found) {
     errEl.style.display = 'none';
-    statusEl.textContent = 'Connecting to Firebase...';
-    loggedIn = true;
+    statusEl.textContent = 'Loading...';
+    loggedIn    = true;
     currentUser = found;
     initApp();
   } else {
     statusEl.textContent = '';
-    errEl.style.display = 'block';
+    errEl.style.display  = 'block';
     document.getElementById('loginPass').value = '';
   }
 }
@@ -1261,7 +1286,7 @@ async function saveUser() {
     toast('User update hoyeche!');
   }
 
-  saveUsers();
+  await saveUsers();
   closeMo('moUser');
   renderUserList();
 }
@@ -1270,7 +1295,7 @@ async function deleteUser(id) {
   if (id === 'admin') { toast('Admin delete kora jabe na!','err'); return; }
   if (!confirm('Ei user delete korben?')) return;
   USERS = USERS.filter(u => u.id !== id);
-  saveUsers();
+  await saveUsers();
   renderUserList();
   toast('User delete hoyeche!');
 }
@@ -1325,13 +1350,11 @@ async function initApp() {
         S.logs         = data.logs         || [];
         S.topups       = data.topups       || [];
         S.salesReports = data.salesReports || [];
-        S.users        = data.users        || [];
+        const loadedUsers = data.users || [];
+        if (!loadedUsers.find(u => u.id === 'admin')) loadedUsers.unshift(DEFAULT_ADMIN);
+        S.users = loadedUsers;
+        USERS   = loadedUsers;
       }
-      // Ensure default admin always exists
-      if (!S.users.find(u => u.id === 'admin')) {
-        S.users.unshift(DEFAULT_ADMIN);
-      }
-      USERS = S.users;
     } catch(e) { console.error('Firebase load error:', e); }
 
     // Show app
@@ -1357,8 +1380,10 @@ async function initApp() {
       S.logs         = data.logs         || [];
       S.topups       = data.topups       || [];
       S.salesReports = data.salesReports || [];
-      S.users        = data.users        || [];
-      if (!S.users.find(u => u.id === 'admin')) S.users.unshift(DEFAULT_ADMIN);
+      // Only sync users if admin is on the users page (avoid overwriting mid-edit)
+      const newUsers = data.users || [];
+      if (!newUsers.find(u => u.id === 'admin')) newUsers.unshift(DEFAULT_ADMIN);
+      S.users = newUsers;
       USERS = S.users;
       renderAll();
     });
