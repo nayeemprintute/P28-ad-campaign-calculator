@@ -1082,8 +1082,8 @@
   <div class="mo-box">
     <h3>Edit Spend Entry</h3>
     <div class="mo-field"><label>Date</label><input type="date" id="msDate"/></div>
-    <div class="mo-field"><label>New Spent (৳) — শুধু এই entry র খরচ</label><input type="number" id="msAmt" min="0" step="0.01"/></div>
-    <input type="hidden" id="msCampTotal"/>
+    <div class="mo-field"><label>Camp. Total (৳) — এই campaign এর সর্বমোট খরচ</label><input type="number" id="msCampTotal" min="0" step="0.01"/></div>
+    <input type="hidden" id="msAmt"/>
     <input type="hidden" id="msId"/>
     <div class="mo-actions">
       <button class="btn btn-ghost" onclick="closeMo('moSpend')">Cancel</button>
@@ -1784,23 +1784,41 @@ function openSpendEdit(id) {
   document.getElementById('msAmt').value         = l.todaySpent;
   document.getElementById('msCampTotal').value   = l.campaignTotal;
   document.getElementById('msDate').value        = l.date;
+  // Focus on campaignTotal field (visible editable field)
   openMo('moSpend');
-  setTimeout(() => document.getElementById('msAmt').focus(), 120);
+  setTimeout(() => document.getElementById('msCampTotal').focus(), 120);
 }
 
 function saveSpendEdit() {
   if (!canEdit()) return;
-  const id  = document.getElementById('msId').value;
-  const amt = parseFloat(document.getElementById('msAmt').value);
-  const dt  = document.getElementById('msDate').value;
-  if (isNaN(amt) || amt < 0) { toast('Valid Spent Amount enter korun.','err'); return; }
+  const id          = document.getElementById('msId').value;
+  const newCampTotal = parseFloat(document.getElementById('msCampTotal').value);
+  const dt          = document.getElementById('msDate').value;
+  if (isNaN(newCampTotal) || newCampTotal < 0) { toast('Valid Camp. Total enter korun.','err'); return; }
 
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
 
-  // Only todaySpent and date are editable; recalcAll recomputes campaignTotal & balanceAfter
-  l.todaySpent = parseFloat(amt.toFixed(2));
-  l.date       = dt;
+  // Find previous campaignTotal for the same campaign before this entry's date/seq
+  const prevLog = S.logs
+    .filter(x => x.campaignId === l.campaignId && x.id !== id &&
+      (x.date < dt || (x.date === dt && (x.seq || 0) < (l.seq || 0))))
+    .sort((a, b) => {
+      const dc = b.date.localeCompare(a.date);
+      return dc !== 0 ? dc : (b.seq || 0) - (a.seq || 0);
+    })[0];
+  const prevTotal = prevLog ? prevLog.campaignTotal : 0;
+
+  const derivedTodaySpent = newCampTotal - prevTotal;
+  if (derivedTodaySpent < 0) {
+    toast(`Camp. Total (${fmt(newCampTotal)}) আগের total (${fmt(prevTotal)}) এর কম হতে পারবে না।`, 'err');
+    return;
+  }
+
+  // Update both fields; recalcAll will re-cascade all subsequent entries
+  l.todaySpent    = parseFloat(derivedTodaySpent.toFixed(2));
+  l.campaignTotal = parseFloat(newCampTotal.toFixed(2));
+  l.date          = dt;
 
   recalcAll(); // cascades: fixes all balanceAfter & campaignTotals
   save(); closeMo('moSpend'); renderAll();
