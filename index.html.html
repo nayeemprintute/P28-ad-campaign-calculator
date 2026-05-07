@@ -633,7 +633,7 @@
     <h3>Edit Spend Entry</h3>
     <div class="mo-field"><label>Date</label><input type="date" id="msDate"/></div>
     <div class="mo-field"><label>New Spent (৳) — শুধু এই entry র খরচ</label><input type="number" id="msAmt" min="0" step="0.01"/></div>
-    <div class="mo-field"><label>Campaign Total Spent (৳) — এই entry র পর সর্বমোট</label><input type="number" id="msCampTotal" min="0" step="0.01"/></div>
+    <input type="hidden" id="msCampTotal"/>
     <input type="hidden" id="msId"/>
     <div class="mo-actions">
       <button class="btn btn-ghost" onclick="closeMo('moSpend')">Cancel</button>
@@ -1027,9 +1027,12 @@ function submitSpend() {
     // Find the most recent log for this campaign BEFORE the selected date
     const prevLog = S.logs
       .filter(l => l.campaignId === c.id && l.date < date)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
+      .sort((a, b) => {
+        const dc = b.date.localeCompare(a.date);
+        return dc !== 0 ? dc : (b.seq || 0) - (a.seq || 0);
+      })[0];
     const prevTotal = prevLog ? prevLog.campaignTotal : 0;
-    const newSpent  = newTotalSpent - prevTotal; // difference = actual spend for this entry
+    const newSpent  = parseFloat((newTotalSpent - prevTotal).toFixed(2)); // difference = actual spend for this entry
     if (newSpent < 0) {
       toast(`"${c.name}": Total Spent (${fmt(newTotalSpent)}) selected date er age er total (${fmt(prevTotal)}) er kom hote parbe na.`, 'err');
       hasError = true;
@@ -1104,21 +1107,17 @@ function openSpendEdit(id) {
 }
 
 function saveSpendEdit() {
-  const id        = document.getElementById('msId').value;
-  const amt       = parseFloat(document.getElementById('msAmt').value);
-  const campTotal = parseFloat(document.getElementById('msCampTotal').value);
-  const dt        = document.getElementById('msDate').value;
-  if (isNaN(amt) || amt < 0)       { toast('Valid Spent Amount enter korun.','err'); return; }
-  if (isNaN(campTotal) || campTotal < 0) { toast('Valid Campaign Total enter korun.','err'); return; }
+  const id  = document.getElementById('msId').value;
+  const amt = parseFloat(document.getElementById('msAmt').value);
+  const dt  = document.getElementById('msDate').value;
+  if (isNaN(amt) || amt < 0) { toast('Valid Spent Amount enter korun.','err'); return; }
 
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
 
-  // Only update the editable fields; recalcAll recomputes everything
-  l.todaySpent    = amt;
-  l.campaignTotal = campTotal; // recalcAll will overwrite this anyway
-  l.date          = dt;
-  // balanceAfter is recalculated by recalcAll
+  // Only todaySpent and date are editable; recalcAll recomputes campaignTotal & balanceAfter
+  l.todaySpent = parseFloat(amt.toFixed(2));
+  l.date       = dt;
 
   recalcAll(); // cascades: fixes all balanceAfter & campaignTotals
   save(); closeMo('moSpend'); renderAll();
