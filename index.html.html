@@ -22,7 +22,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
-    const REF = doc(db, 'adtracker', 'main');
+    const REF      = doc(db, 'adtracker', 'main');
+    const UREF     = doc(db, 'adtracker', 'users');
 
     // Expose to global scope for non-module script
     window._fbReady = false;
@@ -37,6 +38,19 @@
     window._fbGet = async () => {
       const snap = await getDoc(REF);
       return snap.exists() ? snap.data() : null;
+    };
+    // Users CRUD
+    window._fbSaveUsers = async (data) => {
+      await setDoc(UREF, data);
+    };
+    window._fbGetUsers = async () => {
+      const snap = await getDoc(UREF);
+      return snap.exists() ? snap.data() : null;
+    };
+    window._fbListenUsers = (cb) => {
+      onSnapshot(UREF, snap => {
+        if (snap.exists()) cb(snap.data());
+      });
     };
     window._fbReady = true;
     window.dispatchEvent(new Event('fbReady'));
@@ -668,6 +682,9 @@
     </div>
 
     <div class="sidebar-footer">
+      <button class="nav-item" id="nav-users" onclick="navTo('users',this)" style="display:none">
+        <span class="nav-icon">👥</span> Manage Users
+      </button>
       <button class="nav-item" onclick="doLogout()" style="color:var(--red);width:100%">
         <span class="nav-icon">⏻</span> Logout
       </button>
@@ -911,6 +928,21 @@
 
       </div><!-- /page-analytics -->
 
+      <!-- ══════════ PAGE: MANAGE USERS ══════════ -->
+      <div class="page-section" id="page-users">
+        <div class="section-head">
+          <div>
+            <h2>Manage Users</h2>
+            <div class="sub">Add, edit or remove user accounts</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddUser()">+ New User</button>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="dot"></span> User List</div>
+          <div id="userList"><div class="empty"><div class="ei">👥</div>Loading...</div></div>
+        </div>
+      </div><!-- /page-users -->
+
     </div><!-- /page-content -->
   </div><!-- /mainArea -->
 
@@ -927,6 +959,43 @@
 
 <!-- TOAST -->
 <div id="toast"></div>
+
+<!-- ══ MODAL: Add/Edit User ══ -->
+<div class="mo" id="moUser">
+  <div class="mo-box" style="max-width:420px">
+    <h3 id="moUserTitle">New User</h3>
+    <div class="mo-field">
+      <label>Username</label>
+      <input type="text" id="moUserName" placeholder="e.g. salim" maxlength="40" autocomplete="off"/>
+    </div>
+    <div class="mo-field">
+      <label>Password</label>
+      <input type="password" id="moUserPass" placeholder="Password" maxlength="60" autocomplete="new-password"/>
+    </div>
+    <div class="mo-field">
+      <label>Access Permissions</label>
+      <div id="moUserAccess" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
+          <input type="checkbox" value="dashboard" style="width:auto;accent-color:var(--accent)"/> Dashboard
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
+          <input type="checkbox" value="spend" style="width:auto;accent-color:var(--accent)"/> Spend Entry
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
+          <input type="checkbox" value="sales" style="width:auto;accent-color:var(--accent)"/> Sales Report
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
+          <input type="checkbox" value="analytics" style="width:auto;accent-color:var(--accent)"/> Analytics
+        </label>
+      </div>
+    </div>
+    <input type="hidden" id="moUserId"/>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moUser')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL: Sales SS Import ══ -->
 <div class="mo" id="moSales">
@@ -1049,13 +1118,66 @@
 
 <script>
 /* ══════════════════════════════════════════════════════════
-   LOGIN
+   USER MANAGEMENT SYSTEM
 ══════════════════════════════════════════════════════════ */
-const CRED = { user: 'admin', pass: '1234' };
 
+// Default admin — always present, stored in Firestore 'adtracker/users'
+const DEFAULT_ADMIN = { id: 'admin', username: 'admin', password: '1234', access: ['dashboard','spend','sales','analytics'], isAdmin: true };
+
+let USERS = []; // loaded from Firestore
+let currentUser = null; // logged-in user object
+let loggedIn = false;
+
+/* ── Save users to Firestore ── */
+async function saveUsers() {
+  if (!window._fbReady) return;
+  try { await window._fbSaveUsers({ list: USERS }); } catch(e) { console.error('Users save error:', e); }
+}
+
+/* ── Load users from Firestore (called before login) ── */
+async function loadUsers() {
+  try {
+    const data = await window._fbGetUsers();
+    if (data && data.list && data.list.length) {
+      USERS = data.list;
+      // Ensure admin always exists
+      if (!USERS.find(u => u.id === 'admin')) USERS.unshift(DEFAULT_ADMIN);
+    } else {
+      USERS = [DEFAULT_ADMIN];
+      await saveUsers();
+    }
+  } catch(e) {
+    USERS = [DEFAULT_ADMIN];
+  }
+}
+
+/* ── LOGIN ── */
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const statusEl = document.getElementById('loginStatus');
+  statusEl.textContent = 'Checking credentials...';
+  await loadUsers();
+  const found = USERS.find(x => x.username === u && x.password === p);
+  if (found) {
+    errEl.style.display = 'none';
+    statusEl.textContent = 'Connecting to Firebase...';
+    loggedIn = true;
+    currentUser = found;
+    initApp();
+  } else {
+    statusEl.textContent = '';
+    errEl.style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+
+/* ── LOGOUT ── */
 function doLogout() {
   if (!confirm('Logout korben?')) return;
   loggedIn = false;
+  currentUser = null;
   document.getElementById('appWrap').classList.remove('visible');
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
@@ -1064,22 +1186,92 @@ function doLogout() {
   document.getElementById('loginStatus').textContent = '';
   setTimeout(() => document.getElementById('loginUser').focus(), 100);
 }
-let loggedIn = false;
 
-function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginErr');
-  const statusEl = document.getElementById('loginStatus');
-  if (u === CRED.user && p === CRED.pass) {
-    errEl.style.display = 'none';
-    statusEl.textContent = 'Connecting to Firebase...';
-    loggedIn = true;
-    initApp();
+/* ══════════════════════════════════════════════════════════
+   USER PAGE — Render & CRUD
+══════════════════════════════════════════════════════════ */
+function renderUserList() {
+  const el = document.getElementById('userList');
+  if (!el) return;
+  if (!USERS.length) { el.innerHTML = '<div class="empty"><div class="ei">👥</div>Kono user nei.</div>'; return; }
+  el.innerHTML = USERS.map(u => {
+    const isAdmin = u.id === 'admin';
+    const accessLabels = { dashboard: 'Dashboard', spend: 'Spend Entry', sales: 'Sales Report', analytics: 'Analytics' };
+    const badges = (u.access || []).map(a => `<span class="badge" style="background:rgba(61,126,255,.12);color:var(--acc2)">${accessLabels[a]||a}</span>`).join(' ');
+    return `<div class="camp-item">
+      <div class="camp-info" style="flex:1">
+        <div class="camp-name-row">
+          <span>${esc(u.username)}</span>
+          ${isAdmin ? '<span class="badge" style="background:rgba(245,197,66,.12);color:var(--yellow)">admin</span>' : ''}
+        </div>
+        <div class="camp-sub" style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">${badges || '<span style="color:var(--text3)">No access</span>'}</div>
+      </div>
+      <div class="camp-actions">
+        <button class="btn btn-edit" onclick="openEditUser('${u.id}')">✏️ Edit</button>
+        ${!isAdmin ? `<button class="btn btn-danger" onclick="deleteUser('${u.id}')">✕</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddUser() {
+  document.getElementById('moUserTitle').textContent = 'New User';
+  document.getElementById('moUserName').value = '';
+  document.getElementById('moUserPass').value = '';
+  document.getElementById('moUserId').value = '';
+  document.querySelectorAll('#moUserAccess input[type=checkbox]').forEach(cb => cb.checked = false);
+  openMo('moUser');
+}
+
+function openEditUser(id) {
+  const u = USERS.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('moUserTitle').textContent = 'Edit User';
+  document.getElementById('moUserName').value = u.username;
+  document.getElementById('moUserPass').value = u.password;
+  document.getElementById('moUserId').value = u.id;
+  document.querySelectorAll('#moUserAccess input[type=checkbox]').forEach(cb => {
+    cb.checked = (u.access || []).includes(cb.value);
+  });
+  openMo('moUser');
+}
+
+async function saveUser() {
+  const id  = document.getElementById('moUserId').value.trim();
+  const uname = document.getElementById('moUserName').value.trim().toLowerCase();
+  const pass  = document.getElementById('moUserPass').value;
+  const access = [...document.querySelectorAll('#moUserAccess input[type=checkbox]:checked')].map(cb => cb.value);
+
+  if (!uname) { toast('Username enter korun.','err'); return; }
+  if (!pass)  { toast('Password enter korun.','err'); return; }
+
+  if (!id) {
+    // New user
+    if (USERS.find(u => u.username === uname)) { toast('Username already exists!','err'); return; }
+    USERS.push({ id: uid(), username: uname, password: pass, access, isAdmin: false });
+    toast('User add hoyeche!');
   } else {
-    errEl.style.display = 'block';
-    document.getElementById('loginPass').value = '';
+    // Edit
+    const idx = USERS.findIndex(u => u.id === id);
+    if (idx === -1) return;
+    const existing = USERS[idx];
+    if (uname !== existing.username && USERS.find(u => u.username === uname)) { toast('Username already exists!','err'); return; }
+    USERS[idx] = { ...existing, username: uname, password: pass, access };
+    toast('User update hoyeche!');
   }
+
+  await saveUsers();
+  closeMo('moUser');
+  renderUserList();
+}
+
+async function deleteUser(id) {
+  if (id === 'admin') { toast('Admin delete kora jabe na!','err'); return; }
+  if (!confirm('Ei user delete korben?')) return;
+  USERS = USERS.filter(u => u.id !== id);
+  await saveUsers();
+  renderUserList();
+  toast('User delete hoyeche!');
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1136,6 +1328,10 @@ async function initApp() {
     // Show app
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appWrap').classList.add('visible');
+
+    // Show/hide admin-only nav
+    const usersNav = document.getElementById('nav-users');
+    if (usersNav) usersNav.style.display = currentUser && currentUser.isAdmin ? '' : 'none';
 
     // Set up date fields
     document.getElementById('spendDate').value  = today();
@@ -1873,7 +2069,7 @@ function renderAll() {
 /* ══════════════════════════════════════════════════════════
    KEYBOARD & CLICK-OUTSIDE
 ══════════════════════════════════════════════════════════ */
-const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales'];
+const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales','moUser'];
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') ALL_MODALS.forEach(closeMo);
 });
@@ -1884,6 +2080,7 @@ ALL_MODALS.forEach(id => {
 });
 document.getElementById('addBalAmt').addEventListener('keydown',   e => { if(e.key==='Enter') addBalance(); });
 document.getElementById('moCampName').addEventListener('keydown',  e => { if(e.key==='Enter') saveCampaign(); });
+document.getElementById('moUser').addEventListener('click', function(e) { if (e.target === this) closeMo('moUser'); });
 
 /* ══════════════════════════════════════════════════════════
    SIDEBAR NAVIGATION
@@ -1893,6 +2090,7 @@ const PAGE_TITLES = {
   spend:     'Spend Entry',
   sales:     'Sales Report',
   analytics: 'Analytics',
+  users:     'Manage Users',
 };
 
 function navTo(page, btn) {
@@ -1914,6 +2112,7 @@ function navTo(page, btn) {
 
   // Re-render analytics when switching to that page (charts need visible container)
   if (page === 'analytics') setTimeout(renderAnalytics, 50);
+  if (page === 'users') renderUserList();
 }
 
 function toggleSidebar() {
