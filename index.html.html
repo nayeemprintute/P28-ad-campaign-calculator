@@ -959,6 +959,20 @@
       <input type="password" id="moUserPass" placeholder="Password" maxlength="60" autocomplete="new-password"/>
     </div>
     <div class="mo-field">
+      <label>Role / Label</label>
+      <div id="moUserLabels" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer;background:var(--sur2);border:1px solid var(--bor2);border-radius:6px;padding:5px 10px">
+          <input type="checkbox" value="owner" style="width:auto;accent-color:var(--yellow)"/> 👑 Owner
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer;background:var(--sur2);border:1px solid var(--bor2);border-radius:6px;padding:5px 10px">
+          <input type="checkbox" value="marketer" style="width:auto;accent-color:var(--accent)"/> 📣 Marketer
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer;background:var(--sur2);border:1px solid var(--bor2);border-radius:6px;padding:5px 10px">
+          <input type="checkbox" value="sales" style="width:auto;accent-color:var(--green)"/> 💼 Sales
+        </label>
+      </div>
+    </div>
+    <div class="mo-field">
       <label>Access Permissions</label>
       <div id="moUserAccess" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
         <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
@@ -968,7 +982,7 @@
           <input type="checkbox" value="spend" style="width:auto;accent-color:var(--accent)"/> Spend Entry
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
-          <input type="checkbox" value="sales" style="width:auto;accent-color:var(--accent)"/> Sales Report
+          <input type="checkbox" value="sales_report" style="width:auto;accent-color:var(--accent)"/> Sales Report
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.8rem;color:var(--text2);text-transform:none;letter-spacing:0;cursor:pointer">
           <input type="checkbox" value="analytics" style="width:auto;accent-color:var(--accent)"/> Analytics
@@ -1121,6 +1135,14 @@ function canEdit() {
   return false;
 }
 
+/* ── Entry-level ownership check — admin or createdBy match ── */
+function canEditEntry(entry) {
+  if (currentUser && currentUser.isAdmin) return true;
+  if (entry && entry.createdBy && entry.createdBy === currentUser.username) return true;
+  toast('এই entry অন্য user এর। আপনি edit/delete করতে পারবেন না।', 'err');
+  return false;
+}
+
 /* ── Save users — immediate write to Firestore (no debounce) ── */
 async function saveUsers() {
   S.users = USERS;
@@ -1220,17 +1242,23 @@ function renderUserList() {
   const el = document.getElementById('userList');
   if (!el) return;
   if (!USERS.length) { el.innerHTML = '<div class="empty"><div class="ei">👥</div>Kono user nei.</div>'; return; }
+  const LABEL_META = { owner: { icon:'👑', color:'var(--yellow)' }, marketer: { icon:'📣', color:'var(--accent)' }, sales: { icon:'💼', color:'var(--green)' } };
+  const ACCESS_NAMES = { dashboard: 'Dashboard', spend: 'Spend Entry', sales_report: 'Sales Report', analytics: 'Analytics' };
   el.innerHTML = USERS.map(u => {
     const isAdmin = u.id === 'admin';
-    const accessLabels = { dashboard: 'Dashboard', spend: 'Spend Entry', sales: 'Sales Report', analytics: 'Analytics' };
-    const badges = (u.access || []).map(a => `<span class="badge" style="background:rgba(61,126,255,.12);color:var(--acc2)">${accessLabels[a]||a}</span>`).join(' ');
+    const labelBadges = (u.labels || []).map(l => {
+      const m = LABEL_META[l] || { icon:'', color:'var(--text2)' };
+      return `<span class="badge" style="background:${m.color}22;color:${m.color};font-size:.65rem">${m.icon} ${l}</span>`;
+    }).join('');
+    const accessBadges = (u.access || []).map(a => `<span class="badge" style="background:rgba(61,126,255,.1);color:var(--acc2);font-size:.6rem">${ACCESS_NAMES[a]||a}</span>`).join('');
     return `<div class="camp-item">
       <div class="camp-info" style="flex:1">
-        <div class="camp-name-row">
+        <div class="camp-name-row" style="align-items:center;gap:8px">
           <span>${esc(u.username)}</span>
-          ${isAdmin ? '<span class="badge" style="background:rgba(245,197,66,.12);color:var(--yellow)">admin</span>' : ''}
+          ${isAdmin ? '<span class="badge" style="background:rgba(245,197,66,.15);color:var(--yellow)">admin</span>' : ''}
+          ${labelBadges}
         </div>
-        <div class="camp-sub" style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">${badges || '<span style="color:var(--text3)">No access</span>'}</div>
+        <div class="camp-sub" style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">${accessBadges || '<span style="color:var(--text3);font-size:.7rem">No access assigned</span>'}</div>
       </div>
       <div class="camp-actions">
         <button class="btn btn-edit" onclick="openEditUser('${u.id}')">✏️ Edit</button>
@@ -1246,6 +1274,7 @@ function openAddUser() {
   document.getElementById('moUserPass').value = '';
   document.getElementById('moUserId').value = '';
   document.querySelectorAll('#moUserAccess input[type=checkbox]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('#moUserLabels input[type=checkbox]').forEach(cb => cb.checked = false);
   openMo('moUser');
 }
 
@@ -1259,6 +1288,9 @@ function openEditUser(id) {
   document.querySelectorAll('#moUserAccess input[type=checkbox]').forEach(cb => {
     cb.checked = (u.access || []).includes(cb.value);
   });
+  document.querySelectorAll('#moUserLabels input[type=checkbox]').forEach(cb => {
+    cb.checked = (u.labels || []).includes(cb.value);
+  });
   openMo('moUser');
 }
 
@@ -1267,6 +1299,7 @@ async function saveUser() {
   const uname = document.getElementById('moUserName').value.trim().toLowerCase();
   const pass  = document.getElementById('moUserPass').value;
   const access = [...document.querySelectorAll('#moUserAccess input[type=checkbox]:checked')].map(cb => cb.value);
+  const labels = [...document.querySelectorAll('#moUserLabels input[type=checkbox]:checked')].map(cb => cb.value);
 
   if (!uname) { toast('Username enter korun.','err'); return; }
   if (!pass)  { toast('Password enter korun.','err'); return; }
@@ -1274,7 +1307,7 @@ async function saveUser() {
   if (!id) {
     // New user
     if (USERS.find(u => u.username === uname)) { toast('Username already exists!','err'); return; }
-    USERS.push({ id: uid(), username: uname, password: pass, access, isAdmin: false });
+    USERS.push({ id: uid(), username: uname, password: pass, access, labels, isAdmin: false });
     toast('User add hoyeche!');
   } else {
     // Edit
@@ -1282,7 +1315,7 @@ async function saveUser() {
     if (idx === -1) return;
     const existing = USERS[idx];
     if (uname !== existing.username && USERS.find(u => u.username === uname)) { toast('Username already exists!','err'); return; }
-    USERS[idx] = { ...existing, username: uname, password: pass, access };
+    USERS[idx] = { ...existing, username: uname, password: pass, access, labels };
     toast('User update hoyeche!');
   }
 
@@ -1489,7 +1522,7 @@ function addBalance() {
 
   // Save to top-up history — newest first
   // seq = timestamp so same-date entries stay in insertion order
-  S.topups.unshift({ id: uid(), date, amount: amt, note, balanceAfter: 0, seq: Date.now() });
+  S.topups.unshift({ id: uid(), date, amount: amt, note, balanceAfter: 0, seq: Date.now(), createdBy: currentUser ? currentUser.username : 'admin' });
 
   recalcAll(); // recalcAll computes S.balance & all balanceAfter from scratch
   save(); renderAll();
@@ -1527,7 +1560,8 @@ function renderBalHistList() {
 
 /* ── Edit top-up ── */
 function openTopupEdit(id) {
-  if (!canEdit()) return;
+  const entry = S.topups.find(x => x.id === id);
+  if (!canEditEntry(entry)) return;
   const t = S.topups.find(x => x.id === id);
   if (!t) return;
   document.getElementById('mtId').value   = id;
@@ -1565,7 +1599,8 @@ function saveTopupEdit() {
 }
 
 function deleteTopup(id) {
-  if (!canEdit()) return;
+  const entry = S.topups.find(x => x.id === id);
+  if (!canEditEntry(entry)) return;
   const t = S.topups.find(x => x.id === id);
   if (!t) return;
   if (!confirm(`${fmt(t.amount)} top-up delete korben?`)) return;
@@ -1706,6 +1741,7 @@ function submitSpend() {
       campaignTotal: 0,       // placeholder — recalcAll overwrites this
       balanceAfter:  0,       // placeholder — recalcAll overwrites this
       seq:           batchSeq + idx, // same-batch entries get sequential seq
+      createdBy:     currentUser ? currentUser.username : 'admin',
     });
   });
 
@@ -1740,7 +1776,8 @@ function updatePreview() {
 
 /* ── Edit spend log ── */
 function openSpendEdit(id) {
-  if (!canEdit()) return;
+  const entry = S.logs.find(x => x.id === id);
+  if (!canEditEntry(entry)) return;
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
   document.getElementById('msId').value          = id;
@@ -1771,7 +1808,8 @@ function saveSpendEdit() {
 }
 
 function deleteSpend(id) {
-  if (!canEdit()) return;
+  const entry = S.logs.find(x => x.id === id);
+  if (!canEditEntry(entry)) return;
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
   if (!confirm('Ei spend entry delete korben? Balance adjust hobe.')) return;
@@ -1877,7 +1915,10 @@ function renderLogs() {
       html += `<tr class="fu">
         <td class="mono" data-label="Date">${row.date}</td>
         <td data-label="Type"><span class="pill topup">⬆ TOP-UP</span></td>
-        <td class="bold" data-label="Description">${esc(row.campaignName)}</td>
+        <td class="bold" data-label="Description">
+          ${esc(row.campaignName)}
+          ${row.createdBy ? `<span style="margin-left:6px;font-family:var(--mono);font-size:.58rem;color:var(--text3);background:var(--sur3);padding:1px 6px;border-radius:10px">@${esc(row.createdBy)}</span>` : ''}
+        </td>
         <td class="grn" data-label="Amount">${fmt(row.topupAmt)}</td>
         <td class="mono" data-label="Camp. Total" style="color:var(--text3)">—</td>
         <td class="${row.balanceAfter>=0?'grn':'red'}" data-label="Balance After">${fmt(row.balanceAfter)}</td>
@@ -1894,7 +1935,10 @@ function renderLogs() {
       html += `<tr class="fu" style="${rowStyle};border-left:3px solid ${col}">
         <td class="mono" data-label="Date">${row.date}</td>
         <td data-label="Type"><span class="pill spend" style="background:${col}22;color:${col}">⬇ SPEND</span></td>
-        <td class="bold" data-label="Description" style="color:${col}">${esc(row.campaignName)}</td>
+        <td class="bold" data-label="Description" style="color:${col}">
+          ${esc(row.campaignName)}
+          ${row.createdBy ? `<span style="margin-left:6px;font-family:var(--mono);font-size:.58rem;color:var(--text3);background:var(--sur3);padding:1px 6px;border-radius:10px">@${esc(row.createdBy)}</span>` : ''}
+        </td>
         <td class="red" data-label="Amount">${fmt(row.todaySpent)}</td>
         <td class="ylw" data-label="Camp. Total" style="font-size:.75rem">${fmt(row.campaignTotal)}<br><span style="font-family:var(--mono);font-size:.62rem;color:var(--text3);letter-spacing:.03em">${esc(row.campaignName)}</span></td>
         <td class="${row.balanceAfter>=0?'grn':'red'}" data-label="Balance After">${fmt(row.balanceAfter)}</td>
@@ -2044,6 +2088,7 @@ function quickSubmit() {
     campaignTotal: 0,      // recalcAll overwrites
     balanceAfter:  0,      // recalcAll overwrites
     seq:           Date.now(),
+    createdBy:     currentUser ? currentUser.username : 'admin',
   });
 
   recalcAll(); // computes S.balance, balanceAfter, campaignTotal
@@ -2236,7 +2281,7 @@ function parseSalesText() {
 
   /* parse line by line */
   const lines = raw.split(/\n/).map(l => l.trim()).filter(Boolean);
-  const entry = { date, id: uid(), seq: Date.now() };
+  const entry = { date, id: uid(), seq: Date.now(), createdBy: currentUser ? currentUser.username : 'admin' };
   SALE_CATS.forEach(c => entry[c.key] = null);
 
   lines.forEach(line => {
@@ -2285,7 +2330,8 @@ function confirmSalesImport() {
 }
 
 function deleteSalesReport(id) {
-  if (!canEdit()) return;
+  const entry = S.salesReports.find(x => x.id === id);
+  if (!canEditEntry(entry)) return;
   if (!confirm('Ei sales report delete korben?')) return;
   S.salesReports = S.salesReports.filter(r => r.id !== id);
   save(); renderSalesTable(); renderSalesSummary();
@@ -2321,7 +2367,10 @@ function renderSalesTable() {
 
   tbody.innerHTML = rows.map(r => `
     <tr class="fu">
-      <td class="mono">${r.date}</td>
+      <td class="mono">
+        ${r.date}
+        ${r.createdBy ? `<div style="font-family:var(--mono);font-size:.58rem;color:var(--text3);margin-top:2px">@${esc(r.createdBy)}</div>` : ''}
+      </td>
       ${SALE_CATS.map(c => `<td style="font-family:var(--mono);color:${c.color};font-size:.82rem">${r[c.key] !== null && r[c.key] !== undefined ? r[c.key].toLocaleString() : '<span style="color:var(--text3)">—</span>'}</td>`).join('')}
       <td>
         <button class="btn btn-danger" onclick="deleteSalesReport('${r.id}')">✕</button>
