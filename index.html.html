@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Printiut — Meta Ad Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -609,10 +610,152 @@
   </button>
 </div>
 
+
+  <!-- ══════════ SALES REPORT SECTION ══════════ -->
+  <div class="panel" id="salesSection" style="margin-top:22px">
+    <div class="panel-title" style="flex-wrap:wrap;gap:10px">
+      <span class="dot" style="background:var(--purple)"></span> Sales Report
+      <button class="btn btn-sm" style="margin-left:auto;background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.3)" onclick="openSalesImport()">
+        📸 SS থেকে Import
+      </button>
+    </div>
+
+    <!-- Summary cards -->
+    <div id="salesSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px"></div>
+
+    <!-- Date filter -->
+    <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      <input type="date" id="salesFDate" onchange="renderSalesTable()"
+        style="background:rgba(255,255,255,.05);border:1px solid var(--bor2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.82rem;padding:8px 11px;outline:none;width:auto"/>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('salesFDate').value='';renderSalesTable()">✕ Clear</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Today (New Leads)</th>
+            <th>No Response</th>
+            <th>Price High</th>
+            <th>Later</th>
+            <th>Trust Issue</th>
+            <th>Follow Up</th>
+            <th>Disqualified</th>
+            <th>Quotation</th>
+            <th>Pending Design</th>
+            <th>Design</th>
+            <th>Revision</th>
+            <th>Pending Payment</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="salesBody">
+          <tr><td colspan="14" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono sales report nei. SS import korun.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- ══════════ PHASE 2: AD vs SALES ANALYTICS ══════════ -->
+  <div class="panel" style="margin-top:22px">
+    <div class="panel-title" style="flex-wrap:wrap;gap:10px">
+      <span class="dot" style="background:var(--green)"></span> Ad Spend vs Sales Analytics
+      <span style="font-family:var(--mono);font-size:.65rem;color:var(--text3);margin-left:4px">— daily comparison</span>
+    </div>
+
+    <!-- KPI summary row -->
+    <div id="kpiCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:22px"></div>
+
+    <!-- Chart: Spend vs New Leads -->
+    <div style="margin-bottom:22px">
+      <div class="sec-label" style="margin-bottom:10px">📈 Daily Ad Spend vs New Leads</div>
+      <div style="position:relative;width:100%;overflow-x:auto">
+        <canvas id="chartSpendLeads" height="220" style="max-width:100%"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart: Cost per Lead -->
+    <div style="margin-bottom:22px">
+      <div class="sec-label" style="margin-bottom:10px">💰 Cost per Lead (daily)</div>
+      <div style="position:relative;width:100%;overflow-x:auto">
+        <canvas id="chartCPL" height="180" style="max-width:100%"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart: Lead Status Breakdown (latest day) -->
+    <div style="margin-bottom:10px">
+      <div class="sec-label" style="margin-bottom:10px">🥧 Latest Day — Lead Status Breakdown</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <canvas id="chartDonut" width="200" height="200" style="flex-shrink:0"></canvas>
+        <div id="donutLegend" style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:7px;justify-content:center"></div>
+      </div>
+    </div>
+
+    <!-- Combined daily table -->
+    <div class="sec-label" style="margin-bottom:10px;margin-top:18px">📋 Daily Combined Table</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Ad Spend</th>
+            <th>New Leads</th>
+            <th>Cost / Lead</th>
+            <th>Follow Up</th>
+            <th>Quotation</th>
+            <th>Pending Pay</th>
+            <th>No Response</th>
+          </tr>
+        </thead>
+        <tbody id="analyticsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div><!-- /appWrap -->
 
 <!-- TOAST -->
 <div id="toast"></div>
+
+<!-- ══ MODAL: Sales SS Import ══ -->
+<div class="mo" id="moSales">
+  <div class="mo-box" style="max-width:520px">
+    <h3>📸 Sales Report Import</h3>
+    <p style="font-family:var(--mono);font-size:.75rem;color:var(--text3);margin-bottom:15px;line-height:1.6">
+      Screenshot থেকে extract করা data নিচে দেখাচ্ছে। সঠিক থাকলে <b style="color:var(--green)">Confirm & Save</b> চাপুন।
+    </p>
+
+    <!-- Step 1: paste area -->
+    <div id="salesStep1">
+      <div class="mo-field">
+        <label>Date</label>
+        <input type="date" id="sImportDate"/>
+      </div>
+      <div class="mo-field">
+        <label>Claude থেকে extract করা text এখানে paste করুন</label>
+        <textarea id="sImportText" rows="8"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--bor2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.78rem;padding:10px;outline:none;resize:vertical;line-height:1.6"
+          placeholder="যেমন:&#10;Today: 38&#10;No Response: 4117&#10;Price High: 42&#10;Later: 145&#10;Trust Issue: 9&#10;Follow Up: 27&#10;Disqualified: 15&#10;Quotation: 1&#10;Pending Design Charge: 85&#10;Design: 5&#10;Revision: 9&#10;Pending Payment: 14"></textarea>
+      </div>
+      <div class="mo-actions">
+        <button class="btn btn-ghost" onclick="closeMo('moSales')">Cancel</button>
+        <button class="btn btn-primary" onclick="parseSalesText()">🔍 Parse & Preview</button>
+      </div>
+    </div>
+
+    <!-- Step 2: preview & confirm -->
+    <div id="salesStep2" style="display:none">
+      <div id="salesPreviewGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px"></div>
+      <div class="mo-actions">
+        <button class="btn btn-ghost" onclick="document.getElementById('salesStep1').style.display='';document.getElementById('salesStep2').style.display='none'">← Back</button>
+        <button class="btn btn-green" onclick="confirmSalesImport()">✔ Confirm & Save</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL: Add/Edit Campaign ══ -->
 <div class="mo" id="moCamp">
@@ -735,10 +878,11 @@ function doLogin() {
    STATE
 ══════════════════════════════════════════════════════════ */
 let S = {
-  balance:   0,
-  campaigns: [],
-  logs:      [],
-  topups:    [],
+  balance:      0,
+  campaigns:    [],
+  logs:         [],
+  topups:       [],
+  salesReports: [],
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -752,10 +896,11 @@ function save() {
     if (!window._fbReady) return;
     try {
       await window._fbSave({
-        balance:   S.balance,
-        campaigns: S.campaigns,
-        logs:      S.logs,
-        topups:    S.topups,
+        balance:      S.balance,
+        campaigns:    S.campaigns,
+        logs:         S.logs,
+        topups:       S.topups,
+        salesReports: S.salesReports,
       });
     } catch(e) { console.error('Firebase save error:', e); }
   }, 600);
@@ -772,10 +917,11 @@ async function initApp() {
     try {
       const data = await window._fbGet();
       if (data) {
-        S.balance   = parseFloat(data.balance   || 0);
-        S.campaigns = data.campaigns || [];
-        S.logs      = data.logs      || [];
-        S.topups    = data.topups    || [];
+        S.balance      = parseFloat(data.balance   || 0);
+        S.campaigns    = data.campaigns    || [];
+        S.logs         = data.logs         || [];
+        S.topups       = data.topups       || [];
+        S.salesReports = data.salesReports || [];
       }
     } catch(e) { console.error('Firebase load error:', e); }
 
@@ -793,10 +939,11 @@ async function initApp() {
 
     // Live sync from Firestore
     window._fbListen(data => {
-      S.balance   = parseFloat(data.balance   || 0);
-      S.campaigns = data.campaigns || [];
-      S.logs      = data.logs      || [];
-      S.topups    = data.topups    || [];
+      S.balance      = parseFloat(data.balance      || 0);
+      S.campaigns    = data.campaigns    || [];
+      S.logs         = data.logs         || [];
+      S.topups       = data.topups       || [];
+      S.salesReports = data.salesReports || [];
       renderAll();
     });
   };
@@ -1289,7 +1436,7 @@ function renderLogs() {
       const camp = S.campaigns.find(x => x.id === row.campaignId);
       const col  = camp ? (camp.color || '#3d7eff') : '#3d7eff';
       const st   = camp ? (camp.status || 'active') : 'active';
-      const rowStyle = st === 'deleted' ? 'filter:grayscale(100%) opacity(.5)' : st === 'pause' ? 'opacity:.65' : '';
+      const rowStyle = st === 'deleted' ? 'filter:grayscale(100%) opacity(.5)' : st === 'pause' ? 'filter:saturate(30%)' : '';
       html += `<tr class="fu" style="${rowStyle};border-left:3px solid ${col}">
         <td class="mono" data-label="Date">${row.date}</td>
         <td data-label="Type"><span class="pill spend" style="background:${col}22;color:${col}">⬇ SPEND</span></td>
@@ -1315,7 +1462,7 @@ function campStatus(c) { return c.status || 'active'; }
 function campOpacity(c) {
   const s = campStatus(c);
   if (s === 'deleted') return 'filter:grayscale(100%) opacity(.45)';
-  if (s === 'pause')   return 'opacity:.6';
+  if (s === 'pause')   return 'filter:saturate(30%)';
   return '';
 }
 const STATUS_EMOJI = { active:'🟢', pause:'🟡', deleted:'🔴' };
@@ -1495,12 +1642,15 @@ function renderAll() {
   renderDailyInputs();
   renderFilterSelect();
   renderLogs();
+  renderSalesTable();
+  renderSalesSummary();
+  renderAnalytics();
 }
 
 /* ══════════════════════════════════════════════════════════
    KEYBOARD & CLICK-OUTSIDE
 ══════════════════════════════════════════════════════════ */
-const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist'];
+const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales'];
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') ALL_MODALS.forEach(closeMo);
 });
@@ -1518,6 +1668,400 @@ document.getElementById('moCampName').addEventListener('keydown',  e => { if(e.k
 window.addEventListener('load', () => {
   document.getElementById('loginUser').focus();
 });
+
+/* ══════════════════════════════════════════════════════════
+   SALES REPORT — FIXED CATEGORIES
+══════════════════════════════════════════════════════════ */
+const SALE_CATS = [
+  { key:'today',          label:'Today (New Leads)',    color:'var(--accent)' },
+  { key:'noResponse',     label:'No Response',          color:'var(--red)' },
+  { key:'priceHigh',      label:'Price High',           color:'var(--yellow)' },
+  { key:'later',          label:'Later',                color:'var(--text2)' },
+  { key:'trustIssue',     label:'Trust Issue',          color:'#fb923c' },
+  { key:'followUp',       label:'Follow Up',            color:'var(--green)' },
+  { key:'disqualified',   label:'Disqualified',         color:'var(--red)' },
+  { key:'quotation',      label:'Quotation',            color:'var(--purple)' },
+  { key:'pendingDesign',  label:'Pending Design Charge',color:'var(--yellow)' },
+  { key:'design',         label:'Design',               color:'#f472b6' },
+  { key:'revision',       label:'Revision',             color:'#60a5fa' },
+  { key:'pendingPayment', label:'Pending Payment',      color:'var(--acc2)' },
+];
+
+/* keyword map for parsing */
+const SALE_PARSE_MAP = [
+  { key:'today',          words:['today'] },
+  { key:'noResponse',     words:['no response','norespon','no_response','no-response'] },
+  { key:'priceHigh',      words:['price high','pricehigh','price_high'] },
+  { key:'later',          words:['later'] },
+  { key:'trustIssue',     words:['trust issue','trustissue','trust_issue'] },
+  { key:'followUp',       words:['follow up','followup','follow_up'] },
+  { key:'disqualified',   words:['disqualified','disqualif'] },
+  { key:'quotation',      words:['quotation','quot'] },
+  { key:'pendingDesign',  words:['pending design','pendingdesign','pending_design','design charge'] },
+  { key:'design',         words:['design'] },
+  { key:'revision',       words:['revision','revisi'] },
+  { key:'pendingPayment', words:['pending payment','pendingpayment','pending_payment'] },
+];
+
+let _pendingSalesEntry = null;
+
+function openSalesImport() {
+  document.getElementById('sImportDate').value = today();
+  document.getElementById('sImportText').value = '';
+  document.getElementById('salesStep1').style.display = '';
+  document.getElementById('salesStep2').style.display = 'none';
+  _pendingSalesEntry = null;
+  openMo('moSales');
+  setTimeout(() => document.getElementById('sImportText').focus(), 150);
+}
+
+function parseSalesText() {
+  const raw  = document.getElementById('sImportText').value.trim();
+  const date = document.getElementById('sImportDate').value;
+  if (!raw)  { toast('Text paste korun.','err'); return; }
+  if (!date) { toast('Date dun.','err'); return; }
+
+  /* parse line by line */
+  const lines = raw.split(/
+/).map(l => l.trim()).filter(Boolean);
+  const entry = { date, id: uid(), seq: Date.now() };
+  SALE_CATS.forEach(c => entry[c.key] = null);
+
+  lines.forEach(line => {
+    /* extract number from line */
+    const numMatch = line.match(/[\d,]+/);
+    if (!numMatch) return;
+    const num = parseInt(numMatch[0].replace(/,/g,''), 10);
+    const low = line.toLowerCase();
+
+    /* match category — check pendingDesign BEFORE design */
+    for (const m of SALE_PARSE_MAP) {
+      if (m.words.some(w => low.includes(w))) {
+        entry[m.key] = num;
+        break;
+      }
+    }
+  });
+
+  /* preview */
+  const grid = document.getElementById('salesPreviewGrid');
+  grid.innerHTML = SALE_CATS.map(c => `
+    <div style="background:var(--sur2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">${c.label}</div>
+      <div style="font-size:1.1rem;font-weight:700;color:${c.color}">${entry[c.key] !== null ? entry[c.key] : '<span style="color:var(--text3);font-size:.8rem">—</span>'}</div>
+    </div>
+  `).join('');
+
+  _pendingSalesEntry = entry;
+  document.getElementById('salesStep1').style.display = 'none';
+  document.getElementById('salesStep2').style.display = '';
+}
+
+function confirmSalesImport() {
+  if (!_pendingSalesEntry) return;
+
+  /* remove existing entry for same date if any */
+  S.salesReports = S.salesReports.filter(r => r.date !== _pendingSalesEntry.date);
+  S.salesReports.unshift(_pendingSalesEntry);
+  _pendingSalesEntry = null;
+
+  save();
+  closeMo('moSales');
+  renderSalesTable();
+  renderSalesSummary();
+  toast('✔ Sales report save hoyeche!');
+}
+
+function deleteSalesReport(id) {
+  if (!confirm('Ei sales report delete korben?')) return;
+  S.salesReports = S.salesReports.filter(r => r.id !== id);
+  save(); renderSalesTable(); renderSalesSummary();
+  toast('Sales report deleted.','err');
+}
+
+/* ── Render Summary Cards (latest entry) ── */
+function renderSalesSummary() {
+  const el = document.getElementById('salesSummaryCards');
+  if (!S.salesReports.length) { el.innerHTML = ''; return; }
+
+  const latest = [...S.salesReports].sort((a,b)=>b.date.localeCompare(a.date))[0];
+  el.innerHTML = SALE_CATS.map(c => `
+    <div class="stat-card" style="border-color:${c.color}33">
+      <div class="s-label" style="color:${c.color}">${c.label}</div>
+      <div class="s-value" style="color:${c.color};font-size:1.2rem">${latest[c.key] !== null && latest[c.key] !== undefined ? latest[c.key].toLocaleString() : '—'}</div>
+      <div style="font-family:var(--mono);font-size:.6rem;color:var(--text3);margin-top:3px">${latest.date}</div>
+    </div>
+  `).join('');
+}
+
+/* ── Render Sales Table ── */
+function renderSalesTable() {
+  const tbody = document.getElementById('salesBody');
+  const fDate = document.getElementById('salesFDate') ? document.getElementById('salesFDate').value : '';
+  let rows = [...S.salesReports].sort((a,b)=>b.date.localeCompare(a.date));
+  if (fDate) rows = rows.filter(r => r.date === fDate);
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono sales report nei.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr class="fu">
+      <td class="mono">${r.date}</td>
+      ${SALE_CATS.map(c => `<td style="font-family:var(--mono);color:${c.color};font-size:.82rem">${r[c.key] !== null && r[c.key] !== undefined ? r[c.key].toLocaleString() : '<span style="color:var(--text3)">—</span>'}</td>`).join('')}
+      <td>
+        <button class="btn btn-danger" onclick="deleteSalesReport('${r.id}')">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   PHASE 2 — ANALYTICS: Ad Spend vs Sales
+══════════════════════════════════════════════════════════ */
+let _chartSL = null, _chartCPL = null, _chartDonut = null;
+
+function destroyChart(ref) { if (ref) { try { ref.destroy(); } catch(e){} } return null; }
+
+function getChartDefaults() {
+  return {
+    color: '#8892a8',
+    borderColor: '#252a3a',
+    font: { family: "'DM Mono', monospace", size: 11 },
+  };
+}
+
+/* Build daily merged data: for each date that has either spend or sales, merge both */
+function buildAnalyticsRows() {
+  /* collect all dates */
+  const dates = new Set();
+  S.logs.forEach(l  => dates.add(l.date));
+  S.topups.forEach(t => dates.add(t.date));
+  S.salesReports.forEach(r => dates.add(r.date));
+
+  /* for each date: total ad spend (all campaigns) + sales data */
+  const rows = [...dates].sort().map(date => {
+    const adSpend = S.logs
+      .filter(l => l.date === date)
+      .reduce((s, l) => s + (l.todaySpent || 0), 0);
+
+    const sr = S.salesReports.find(r => r.date === date);
+
+    return {
+      date,
+      adSpend: parseFloat(adSpend.toFixed(2)),
+      newLeads:       sr ? (sr.today          || 0) : null,
+      noResponse:     sr ? (sr.noResponse     || 0) : null,
+      followUp:       sr ? (sr.followUp       || 0) : null,
+      quotation:      sr ? (sr.quotation      || 0) : null,
+      pendingPayment: sr ? (sr.pendingPayment || 0) : null,
+      hasSales: !!sr,
+      hasSPend: adSpend > 0,
+    };
+  }).reverse(); // newest first for table
+
+  return rows;
+}
+
+function renderAnalytics() {
+  if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+
+  const rows = buildAnalyticsRows();
+  const rowsAsc = [...rows].reverse(); // oldest first for charts
+
+  /* ── KPI cards ── */
+  const kpiEl = document.getElementById('kpiCards');
+  if (!kpiEl) return;
+
+  /* only rows that have both spend and sales */
+  const bothRows = rows.filter(r => r.hasSales && r.hasSPend);
+  const totalSpend = rows.reduce((s,r) => s+r.adSpend, 0);
+  const totalLeads = rows.reduce((s,r) => s+(r.newLeads||0), 0);
+  const avgCPL     = bothRows.length
+    ? (bothRows.reduce((s,r) => s + (r.newLeads > 0 ? r.adSpend/r.newLeads : 0), 0) / bothRows.length)
+    : 0;
+  const latestSR   = S.salesReports.length
+    ? [...S.salesReports].sort((a,b)=>b.date.localeCompare(a.date))[0]
+    : null;
+  const followUpTotal = latestSR ? (latestSR.followUp || 0) : 0;
+  const pendPayTotal  = latestSR ? (latestSR.pendingPayment || 0) : 0;
+
+  kpiEl.innerHTML = [
+    { label:'Total Ad Spend',    val:'৳'+totalSpend.toFixed(2),             color:'var(--red)' },
+    { label:'Total New Leads',   val:totalLeads.toLocaleString(),            color:'var(--accent)' },
+    { label:'Avg Cost / Lead',   val: avgCPL > 0 ? '৳'+avgCPL.toFixed(2) : '—', color:'var(--yellow)' },
+    { label:'Follow Up (latest)',val:followUpTotal.toLocaleString(),         color:'var(--green)' },
+    { label:'Pending Payment',   val:pendPayTotal.toLocaleString(),          color:'var(--purple)' },
+  ].map(k => `
+    <div class="stat-card" style="border-color:${k.color}44">
+      <div class="s-label" style="color:${k.color}">${k.label}</div>
+      <div class="s-value" style="color:${k.color};font-size:1.15rem">${k.val}</div>
+    </div>
+  `).join('');
+
+  /* ── Chart 1: Spend vs New Leads ── */
+  const ctxSL = document.getElementById('chartSpendLeads');
+  if (ctxSL) {
+    _chartSL = destroyChart(_chartSL);
+    const labels = rowsAsc.map(r => r.date.slice(5)); // MM-DD
+    _chartSL = new Chart(ctxSL, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Ad Spend (৳)',
+            data: rowsAsc.map(r => r.adSpend),
+            backgroundColor: 'rgba(255,78,106,0.55)',
+            borderColor: '#ff4e6a',
+            borderWidth: 1.5,
+            borderRadius: 4,
+            yAxisID: 'ySpend',
+          },
+          {
+            label: 'New Leads',
+            data: rowsAsc.map(r => r.newLeads),
+            type: 'line',
+            borderColor: '#3d7eff',
+            backgroundColor: 'rgba(61,126,255,0.12)',
+            pointBackgroundColor: '#3d7eff',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'yLeads',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode:'index', intersect:false },
+        plugins: {
+          legend: { labels: { color:'#8892a8', font:{ family:"'DM Mono',monospace", size:11 } } },
+          tooltip: { backgroundColor:'#1c2030', borderColor:'#2e3550', borderWidth:1,
+            titleFont:{ family:"'DM Mono',monospace" }, bodyFont:{ family:"'DM Mono',monospace" } },
+        },
+        scales: {
+          x:      { ticks:{ color:'#525c72', font:{family:"'DM Mono',monospace",size:10} }, grid:{ color:'#252a3a' } },
+          ySpend: { position:'left',  ticks:{ color:'#ff4e6a', font:{family:"'DM Mono',monospace",size:10}, callback: v=>'৳'+v }, grid:{ color:'#252a3a' } },
+          yLeads: { position:'right', ticks:{ color:'#3d7eff', font:{family:"'DM Mono',monospace",size:10} }, grid:{ drawOnChartArea:false } },
+        },
+      },
+    });
+  }
+
+  /* ── Chart 2: Cost per Lead ── */
+  const ctxCPL = document.getElementById('chartCPL');
+  if (ctxCPL) {
+    _chartCPL = destroyChart(_chartCPL);
+    const cplRows = rowsAsc.filter(r => r.hasSales && r.newLeads > 0 && r.hasSPend);
+    _chartCPL = new Chart(ctxCPL, {
+      type: 'line',
+      data: {
+        labels: cplRows.map(r => r.date.slice(5)),
+        datasets: [{
+          label: 'Cost per Lead (৳)',
+          data: cplRows.map(r => parseFloat((r.adSpend / r.newLeads).toFixed(2))),
+          borderColor: '#f5c542',
+          backgroundColor: 'rgba(245,197,66,0.1)',
+          pointBackgroundColor: '#f5c542',
+          pointRadius: 5,
+          tension: 0.3,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels:{ color:'#8892a8', font:{family:"'DM Mono',monospace",size:11} } },
+          tooltip: { backgroundColor:'#1c2030', borderColor:'#2e3550', borderWidth:1,
+            titleFont:{family:"'DM Mono',monospace"}, bodyFont:{family:"'DM Mono',monospace"},
+            callbacks:{ label: ctx => '৳ '+ctx.parsed.y } },
+        },
+        scales: {
+          x: { ticks:{color:'#525c72',font:{family:"'DM Mono',monospace",size:10}}, grid:{color:'#252a3a'} },
+          y: { ticks:{color:'#f5c542',font:{family:"'DM Mono',monospace",size:10}, callback:v=>'৳'+v}, grid:{color:'#252a3a'} },
+        },
+      },
+    });
+  }
+
+  /* ── Chart 3: Donut — latest day breakdown ── */
+  const ctxD = document.getElementById('chartDonut');
+  const legEl = document.getElementById('donutLegend');
+  if (ctxD && latestSR) {
+    _chartDonut = destroyChart(_chartDonut);
+    const donutCats = [
+      { key:'today',          label:'New Leads',      color:'#3d7eff' },
+      { key:'followUp',       label:'Follow Up',      color:'#22d3a0' },
+      { key:'noResponse',     label:'No Response',    color:'#ff4e6a' },
+      { key:'priceHigh',      label:'Price High',     color:'#f5c542' },
+      { key:'later',          label:'Later',          color:'#8892a8' },
+      { key:'trustIssue',     label:'Trust Issue',    color:'#fb923c' },
+      { key:'disqualified',   label:'Disqualified',   color:'#ef4444' },
+      { key:'quotation',      label:'Quotation',      color:'#a78bfa' },
+      { key:'pendingDesign',  label:'Pending Design', color:'#fbbf24' },
+      { key:'design',         label:'Design',         color:'#f472b6' },
+      { key:'revision',       label:'Revision',       color:'#60a5fa' },
+      { key:'pendingPayment', label:'Pending Pay',    color:'#6c9fff' },
+    ];
+    const vals   = donutCats.map(c => latestSR[c.key] || 0);
+    const colors = donutCats.map(c => c.color);
+    const total  = vals.reduce((s,v)=>s+v,0);
+
+    _chartDonut = new Chart(ctxD, {
+      type: 'doughnut',
+      data: { labels: donutCats.map(c=>c.label), datasets:[{ data:vals, backgroundColor:colors, borderColor:'#141720', borderWidth:2, hoverOffset:6 }] },
+      options: {
+        responsive: false,
+        plugins: {
+          legend: { display:false },
+          tooltip: { backgroundColor:'#1c2030', borderColor:'#2e3550', borderWidth:1,
+            titleFont:{family:"'DM Mono',monospace"}, bodyFont:{family:"'DM Mono',monospace"},
+            callbacks:{ label: ctx => ctx.label+': '+ctx.raw+' ('+( total>0?((ctx.raw/total)*100).toFixed(1):0 )+'%)' } },
+        },
+        cutout: '62%',
+      },
+    });
+
+    /* legend */
+    if (legEl) {
+      legEl.innerHTML = donutCats.map((c,i) => `
+        <div style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--text2)">
+          <span style="width:10px;height:10px;border-radius:2px;background:${c.color};flex-shrink:0"></span>
+          <span style="color:var(--text3)">${c.label}</span>
+          <span style="margin-left:auto;font-weight:700;color:${c.color}">${vals[i].toLocaleString()}</span>
+        </div>
+      `).join('');
+    }
+  } else if (legEl) {
+    legEl.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:.75rem">Sales report add korun</div>';
+  }
+
+  /* ── Combined daily table ── */
+  const tbody = document.getElementById('analyticsBody');
+  if (tbody) {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Data nei.</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(r => {
+        const cpl = (r.hasSales && r.newLeads > 0 && r.hasSPend)
+          ? '৳'+(r.adSpend/r.newLeads).toFixed(2)
+          : '<span style="color:var(--text3)">—</span>';
+        return `<tr class="fu">
+          <td class="mono">${r.date}</td>
+          <td class="red mono">${r.adSpend > 0 ? '৳'+r.adSpend.toFixed(2) : '<span style="color:var(--text3)">—</span>'}</td>
+          <td style="color:var(--accent);font-family:var(--mono)">${r.newLeads !== null ? r.newLeads : '<span style="color:var(--text3)">—</span>'}</td>
+          <td class="ylw mono">${cpl}</td>
+          <td style="color:var(--green);font-family:var(--mono)">${r.followUp !== null ? r.followUp : '<span style="color:var(--text3)">—</span>'}</td>
+          <td style="color:var(--purple);font-family:var(--mono)">${r.quotation !== null ? r.quotation : '<span style="color:var(--text3)">—</span>'}</td>
+          <td style="color:var(--acc2);font-family:var(--mono)">${r.pendingPayment !== null ? r.pendingPayment : '<span style="color:var(--text3)">—</span>'}</td>
+          <td class="red mono">${r.noResponse !== null ? r.noResponse : '<span style="color:var(--text3)">—</span>'}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+}
 </script>
 </body>
 </html>
