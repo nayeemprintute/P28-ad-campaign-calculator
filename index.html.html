@@ -1128,14 +1128,30 @@ let USERS = []; // loaded from Firestore
 let currentUser = null; // logged-in user object
 let loggedIn = false;
 
+/* ── Permission check — write/delete allowed only for admin ── */
+function canEdit() {
+  if (currentUser && currentUser.isAdmin) return true;
+  toast('আপনার এই কাজ করার permission নেই।', 'err');
+  return false;
+}
+
 /* ── Save users to Firestore ── */
 async function saveUsers() {
-  if (!window._fbReady) return;
+  await waitForFb();
   try { await window._fbSaveUsers({ list: USERS }); } catch(e) { console.error('Users save error:', e); }
+}
+
+/* ── Wait for Firebase to be ready ── */
+function waitForFb() {
+  return new Promise(resolve => {
+    if (window._fbReady) { resolve(); return; }
+    window.addEventListener('fbReady', resolve, { once: true });
+  });
 }
 
 /* ── Load users from Firestore (called before login) ── */
 async function loadUsers() {
+  await waitForFb();
   try {
     const data = await window._fbGetUsers();
     if (data && data.list && data.list.length) {
@@ -1147,6 +1163,7 @@ async function loadUsers() {
       await saveUsers();
     }
   } catch(e) {
+    console.error('loadUsers error:', e);
     USERS = [DEFAULT_ADMIN];
   }
 }
@@ -1444,6 +1461,7 @@ function recalcAll() {
 }
 
 function addBalance() {
+  if (!canEdit()) return;
   const amt  = parseFloat(document.getElementById('addBalAmt').value);
   const date = document.getElementById('addBalDate').value || today();
   const note = document.getElementById('addBalNote').value.trim() || 'Balance added';
@@ -1489,6 +1507,7 @@ function renderBalHistList() {
 
 /* ── Edit top-up ── */
 function openTopupEdit(id) {
+  if (!canEdit()) return;
   const t = S.topups.find(x => x.id === id);
   if (!t) return;
   document.getElementById('mtId').value   = id;
@@ -1502,6 +1521,7 @@ function openTopupEdit(id) {
 }
 
 function saveTopupEdit() {
+  if (!canEdit()) return;
   const id  = document.getElementById('mtId').value;
   const amt = parseFloat(document.getElementById('mtAmt').value);
   const dt  = document.getElementById('mtDate').value;
@@ -1525,6 +1545,7 @@ function saveTopupEdit() {
 }
 
 function deleteTopup(id) {
+  if (!canEdit()) return;
   const t = S.topups.find(x => x.id === id);
   if (!t) return;
   if (!confirm(`${fmt(t.amount)} top-up delete korben?`)) return;
@@ -1538,6 +1559,7 @@ function deleteTopup(id) {
    2. CAMPAIGN MANAGEMENT
 ══════════════════════════════════════════════════════════ */
 function openAddCamp() {
+  if (!canEdit()) return;
   document.getElementById('moCampTitle').textContent = 'New Campaign';
   document.getElementById('moCampName').value = '';
   document.getElementById('moCampId').value   = '';
@@ -1549,6 +1571,7 @@ function openAddCamp() {
 }
 
 function openEditCamp(id) {
+  if (!canEdit()) return;
   const c = S.campaigns.find(x => x.id === id);
   if (!c) return;
   document.getElementById('moCampTitle').textContent = 'Edit Campaign';
@@ -1570,6 +1593,7 @@ function pickSwatch(hex) {
 }
 
 function saveCampaign() {
+  if (!canEdit()) return;
   const name   = document.getElementById('moCampName').value.trim();
   const editId = document.getElementById('moCampId').value;
   const color  = document.getElementById('moCampColor').value || '#3d7eff';
@@ -1593,6 +1617,7 @@ function saveCampaign() {
 }
 
 function deleteCampaign(id) {
+  if (!canEdit()) return;
   const c = S.campaigns.find(x => x.id === id);
   if (!c) return;
   if (!confirm(`"${c.name}" delete korben? Campaign deleted status e jacbe, logs thakbe.`)) return;
@@ -1609,6 +1634,7 @@ function setSpendToday() {
 }
 
 function submitSpend() {
+  if (!canEdit()) return;
   const date   = document.getElementById('spendDate').value || today();
   const inputs = document.querySelectorAll('.ds-input');
   let totalNewSpent = 0;
@@ -1694,6 +1720,7 @@ function updatePreview() {
 
 /* ── Edit spend log ── */
 function openSpendEdit(id) {
+  if (!canEdit()) return;
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
   document.getElementById('msId').value          = id;
@@ -1705,6 +1732,7 @@ function openSpendEdit(id) {
 }
 
 function saveSpendEdit() {
+  if (!canEdit()) return;
   const id  = document.getElementById('msId').value;
   const amt = parseFloat(document.getElementById('msAmt').value);
   const dt  = document.getElementById('msDate').value;
@@ -1723,6 +1751,7 @@ function saveSpendEdit() {
 }
 
 function deleteSpend(id) {
+  if (!canEdit()) return;
   const l = S.logs.find(x => x.id === id);
   if (!l) return;
   if (!confirm('Ei spend entry delete korben? Balance adjust hobe.')) return;
@@ -1733,6 +1762,7 @@ function deleteSpend(id) {
 }
 
 function confirmClearAll() {
+  if (!canEdit()) return;
   if (!S.logs.length && !S.topups.length) { toast('Kono log nei.','err'); return; }
   if (!confirm('Sob logs (spends + top-ups) delete korben?')) return;
   S.logs    = [];
@@ -2168,6 +2198,7 @@ const SALE_PARSE_MAP = [
 let _pendingSalesEntry = null;
 
 function openSalesImport() {
+  if (!canEdit()) return;
   document.getElementById('sImportDate').value = today();
   document.getElementById('sImportText').value = '';
   document.getElementById('salesStep1').style.display = '';
@@ -2234,6 +2265,7 @@ function confirmSalesImport() {
 }
 
 function deleteSalesReport(id) {
+  if (!canEdit()) return;
   if (!confirm('Ei sales report delete korben?')) return;
   S.salesReports = S.salesReports.filter(r => r.id !== id);
   save(); renderSalesTable(); renderSalesSummary();
