@@ -275,6 +275,9 @@
 
     @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .fu { animation:fadeUp .35s ease both; }
+    .swatch { width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s,border-color .15s;flex-shrink:0; }
+    .swatch:hover,.swatch.sel { transform:scale(1.25);border-color:#fff; }
+    .camp-color-bar { width:4px;border-radius:4px;flex-shrink:0;align-self:stretch;min-height:36px; }
 
     /* ══════════════════════════════════════════════════
        RESPONSIVE — TABLET (≤900px)
@@ -619,6 +622,33 @@
       <label>Campaign Name</label>
       <input type="text" id="moCampName" placeholder="e.g. Summer Sale" maxlength="60"/>
     </div>
+    <div class="mo-field">
+      <label>Campaign Color</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="color" id="moCampColor" value="#3d7eff"
+          style="width:42px;height:38px;padding:2px;border:1px solid var(--bor2);border-radius:8px;background:var(--sur2);cursor:pointer"/>
+        <div id="colorSwatches" style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="swatch" style="background:#3d7eff"  onclick="pickSwatch('#3d7eff')"></span>
+          <span class="swatch" style="background:#22d3a0"  onclick="pickSwatch('#22d3a0')"></span>
+          <span class="swatch" style="background:#f5c542"  onclick="pickSwatch('#f5c542')"></span>
+          <span class="swatch" style="background:#ff4e6a"  onclick="pickSwatch('#ff4e6a')"></span>
+          <span class="swatch" style="background:#a78bfa"  onclick="pickSwatch('#a78bfa')"></span>
+          <span class="swatch" style="background:#fb923c"  onclick="pickSwatch('#fb923c')"></span>
+          <span class="swatch" style="background:#34d399"  onclick="pickSwatch('#34d399')"></span>
+          <span class="swatch" style="background:#f472b6"  onclick="pickSwatch('#f472b6')"></span>
+          <span class="swatch" style="background:#60a5fa"  onclick="pickSwatch('#60a5fa')"></span>
+          <span class="swatch" style="background:#e879f9"  onclick="pickSwatch('#e879f9')"></span>
+        </div>
+      </div>
+    </div>
+    <div class="mo-field" id="moCampStatusField" style="display:none">
+      <label>Status</label>
+      <select id="moCampStatus" style="width:100%">
+        <option value="active">🟢 Active</option>
+        <option value="pause">🟡 Paused</option>
+        <option value="deleted">🔴 Deleted</option>
+      </select>
+    </div>
     <input type="hidden" id="moCampId"/>
     <div class="mo-actions">
       <button class="btn btn-ghost" onclick="closeMo('moCamp')">Cancel</button>
@@ -960,6 +990,9 @@ function openAddCamp() {
   document.getElementById('moCampTitle').textContent = 'New Campaign';
   document.getElementById('moCampName').value = '';
   document.getElementById('moCampId').value   = '';
+  document.getElementById('moCampColor').value = '#3d7eff';
+  document.getElementById('moCampStatusField').style.display = 'none';
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('sel'));
   openMo('moCamp');
   setTimeout(() => document.getElementById('moCampName').focus(), 120);
 }
@@ -968,27 +1001,41 @@ function openEditCamp(id) {
   const c = S.campaigns.find(x => x.id === id);
   if (!c) return;
   document.getElementById('moCampTitle').textContent = 'Edit Campaign';
-  document.getElementById('moCampName').value = c.name;
-  document.getElementById('moCampId').value   = c.id;
+  document.getElementById('moCampName').value  = c.name;
+  document.getElementById('moCampId').value    = c.id;
+  document.getElementById('moCampColor').value = c.color || '#3d7eff';
+  document.getElementById('moCampStatus').value = c.status || 'active';
+  document.getElementById('moCampStatusField').style.display = '';
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('sel'));
   openMo('moCamp');
   setTimeout(() => document.getElementById('moCampName').focus(), 120);
+}
+
+function pickSwatch(hex) {
+  document.getElementById('moCampColor').value = hex;
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.classList.toggle('sel', s.style.background === hex || s.style.backgroundColor === hex);
+  });
 }
 
 function saveCampaign() {
   const name   = document.getElementById('moCampName').value.trim();
   const editId = document.getElementById('moCampId').value;
+  const color  = document.getElementById('moCampColor').value || '#3d7eff';
   if (!name) { toast('Campaign name laagbe.','err'); return; }
 
   if (editId) {
     const c = S.campaigns.find(x => x.id === editId);
     if (c) {
-      c.name = name;
+      c.name   = name;
+      c.color  = color;
+      c.status = document.getElementById('moCampStatus').value || 'active';
       // Sync name in spend logs
       S.logs.forEach(l => { if (l.campaignId === editId) l.campaignName = name; });
-      toast(`Campaign rename hoyeche: "${name}"`);
+      toast(`Campaign updated: "${name}"`);
     }
   } else {
-    S.campaigns.push({ id: uid(), name, totalSpent: 0, createdAt: today() });
+    S.campaigns.push({ id: uid(), name, color, status: 'active', totalSpent: 0, createdAt: today() });
     toast(`Campaign create hoyeche: "${name}"`);
   }
   save(); closeMo('moCamp'); renderAll();
@@ -997,9 +1044,9 @@ function saveCampaign() {
 function deleteCampaign(id) {
   const c = S.campaigns.find(x => x.id === id);
   if (!c) return;
-  if (!confirm(`"${c.name}" delete korben? Purono logs thakbe.`)) return;
-  S.campaigns = S.campaigns.filter(x => x.id !== id);
-  save(); renderAll(); toast('Campaign deleted.','err');
+  if (!confirm(`"${c.name}" delete korben? Campaign deleted status e jacbe, logs thakbe.`)) return;
+  c.status = 'deleted';
+  save(); renderAll(); toast('Campaign deleted status e set hoyeche.','err');
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1239,10 +1286,14 @@ function renderLogs() {
         </td>
       </tr>`;
     } else {
-      html += `<tr class="fu">
+      const camp = S.campaigns.find(x => x.id === row.campaignId);
+      const col  = camp ? (camp.color || '#3d7eff') : '#3d7eff';
+      const st   = camp ? (camp.status || 'active') : 'active';
+      const rowStyle = st === 'deleted' ? 'filter:grayscale(100%) opacity(.5)' : st === 'pause' ? 'opacity:.65' : '';
+      html += `<tr class="fu" style="${rowStyle};border-left:3px solid ${col}">
         <td class="mono" data-label="Date">${row.date}</td>
-        <td data-label="Type"><span class="pill spend">⬇ SPEND</span></td>
-        <td class="bold" data-label="Description">${esc(row.campaignName)}</td>
+        <td data-label="Type"><span class="pill spend" style="background:${col}22;color:${col}">⬇ SPEND</span></td>
+        <td class="bold" data-label="Description" style="color:${col}">${esc(row.campaignName)}</td>
         <td class="red" data-label="Amount">${fmt(row.todaySpent)}</td>
         <td class="ylw" data-label="Camp. Total" style="font-size:.75rem">${fmt(row.campaignTotal)}<br><span style="font-family:var(--mono);font-size:.62rem;color:var(--text3);letter-spacing:.03em">${esc(row.campaignName)}</span></td>
         <td class="${row.balanceAfter>=0?'grn':'red'}" data-label="Balance After">${fmt(row.balanceAfter)}</td>
@@ -1259,23 +1310,41 @@ function renderLogs() {
 /* ══════════════════════════════════════════════════════════
    RENDER — CAMPAIGN LIST
 ══════════════════════════════════════════════════════════ */
+function campColor(c) { return c.color || '#3d7eff'; }
+function campStatus(c) { return c.status || 'active'; }
+function campOpacity(c) {
+  const s = campStatus(c);
+  if (s === 'deleted') return 'filter:grayscale(100%) opacity(.45)';
+  if (s === 'pause')   return 'opacity:.6';
+  return '';
+}
+const STATUS_EMOJI = { active:'🟢', pause:'🟡', deleted:'🔴' };
+const STATUS_LABEL = { active:'Active', pause:'Paused', deleted:'Deleted' };
+
 function renderCampaigns() {
   const el = document.getElementById('campList');
   if (!S.campaigns.length) {
     el.innerHTML = '<div class="empty"><div class="ei">📋</div>No campaigns yet.</div>'; return;
   }
-  el.innerHTML = S.campaigns.map(c => `
-    <div class="camp-item fu">
+  el.innerHTML = S.campaigns.map(c => {
+    const col = campColor(c);
+    const sty = campOpacity(c);
+    const st  = campStatus(c);
+    return `
+    <div class="camp-item fu" style="${sty}">
+      <div class="camp-color-bar" style="background:${col}"></div>
       <div class="camp-info">
-        <div class="camp-name-row">${esc(c.name)} <span class="badge">ACTIVE</span></div>
+        <div class="camp-name-row" style="color:${col}">${esc(c.name)}
+          <span class="badge" style="background:${col}22;color:${col}">${STATUS_EMOJI[st]} ${STATUS_LABEL[st]}</span>
+        </div>
         <div class="camp-sub">Total Spent: <span>${fmt(c.totalSpent||0)}</span></div>
       </div>
       <div class="camp-actions">
         <button class="btn btn-edit" onclick="openEditCamp('${c.id}')">✏️</button>
         <button class="btn btn-danger" onclick="deleteCampaign('${c.id}')">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1292,16 +1361,22 @@ function renderDailyInputs() {
 
   bar.style.display = 'flex';
   const date = document.getElementById('spendDate').value || today();
-  el.innerHTML = S.campaigns.map(c => {
+  const activeCamps = S.campaigns.filter(c => (c.status || 'active') === 'active');
+  if (!activeCamps.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">💸</div>Kono active campaign nei.</div>';
+    bar.style.display = 'none'; return;
+  }
+  el.innerHTML = activeCamps.map(c => {
+    const col = c.color || '#3d7eff';
     const prevLog = S.logs
       .filter(l => l.campaignId === c.id && l.date < date)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
     const prevTotal = prevLog ? prevLog.campaignTotal : 0;
     return `
-    <div class="daily-row fu">
-      <div class="d-name">
+    <div class="daily-row fu" style="border-left:3px solid ${col}">
+      <div class="d-name" style="color:${col}">
         ${esc(c.name)}
-        <small>Previous Total: ${fmt(prevTotal)}</small>
+        <small style="color:var(--text3)">Previous Total: ${fmt(prevTotal)}</small>
       </div>
       <input type="number" class="ds-input d-num" data-id="${c.id}"
         placeholder="৳ Total Spent" min="0" step="0.01" oninput="updatePreview()"/>
@@ -1319,12 +1394,13 @@ function renderFilterSelect() {
   sel.innerHTML = '<option value="">All Campaigns</option>' +
     S.campaigns.map(c => `<option value="${c.id}" ${cur===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
 
-  // Also update quick-spend campaign select (mobile bar)
+  // Quick-spend bar: only active campaigns
   const qs = document.getElementById('qsCamp');
   if (qs) {
     const qsCur = qs.value;
+    const activeCamps = S.campaigns.filter(c => (c.status || 'active') === 'active');
     qs.innerHTML = '<option value="">Campaign seun...</option>' +
-      S.campaigns.map(c => `<option value="${c.id}" ${qsCur===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+      activeCamps.map(c => `<option value="${c.id}" ${qsCur===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
   }
 }
 
