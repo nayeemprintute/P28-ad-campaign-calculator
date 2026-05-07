@@ -833,6 +833,11 @@
           </button>
         </div>
 
+        <!-- Salesman tabs (admin only) -->
+        <div id="salesmanTabsWrap" style="display:none;margin-bottom:16px">
+          <div class="tabs" id="salesmanTabs"></div>
+        </div>
+
         <!-- Summary cards -->
         <div id="salesSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px"></div>
 
@@ -849,13 +854,13 @@
           <div class="table-wrap">
             <table>
               <thead><tr>
-                <th>Date</th><th>Today</th><th>No Response</th><th>Price High</th>
+                <th>Date</th><th id="thSalesman" style="display:none">Salesman</th><th>Today</th><th>No Response</th><th>Price High</th>
                 <th>Later</th><th>Trust Issue</th><th>Follow Up</th><th>Disqualified</th>
                 <th>Quotation</th><th>Pend. Design</th><th>Design</th><th>Revision</th>
                 <th>Pend. Pay</th><th>Actions</th>
               </tr></thead>
               <tbody id="salesBody">
-                <tr><td colspan="14" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono sales report nei. SS import korun.</td></tr>
+                <tr><td colspan="15" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono sales report nei. SS import korun.</td></tr>
               </tbody>
             </table>
           </div>
@@ -1397,6 +1402,13 @@ async function initApp() {
     // Show/hide admin-only nav
     const usersNav = document.getElementById('nav-users');
     if (usersNav) usersNav.style.display = currentUser && currentUser.isAdmin ? '' : 'none';
+
+    // Set default salesman tab — non-admin sees only their own reports
+    if (currentUser && !currentUser.isAdmin) {
+      _activeSalesmanTab = currentUser.username;
+    } else {
+      _activeSalesmanTab = '__all__';
+    }
 
     // Set up date fields
     document.getElementById('spendDate').value  = today();
@@ -2174,6 +2186,7 @@ function renderAll() {
   renderDailyInputs();
   renderFilterSelect();
   renderLogs();
+  renderSalesmanTabs();
   renderSalesTable();
   renderSalesSummary();
   renderAnalytics();
@@ -2278,10 +2291,68 @@ const SALE_PARSE_MAP = [
   { key:'pendingPayment', words:['pending payment','pendingpayment','pending_payment'] },
 ];
 
-let _pendingSalesEntry = null;
+let _activeSalesmanTab = '__all__'; // '__all__' = total view
+
+/* ── Build salesman tab bar (admin only) ── */
+function renderSalesmanTabs() {
+  const wrap = document.getElementById('salesmanTabsWrap');
+  const tabsEl = document.getElementById('salesmanTabs');
+  if (!wrap || !tabsEl) return;
+
+  // Only admin sees multi-salesman tabs
+  if (!currentUser || !currentUser.isAdmin) {
+    wrap.style.display = 'none';
+    _activeSalesmanTab = currentUser ? currentUser.username : '__all__';
+    return;
+  }
+
+  // Collect unique salesmen who have at least one report
+  const salesmenInReports = [...new Set(S.salesReports.map(r => r.createdBy || 'admin'))].sort();
+
+  if (salesmenInReports.length <= 1) {
+    wrap.style.display = 'none';
+    _activeSalesmanTab = '__all__';
+    return;
+  }
+
+  wrap.style.display = '';
+  tabsEl.innerHTML =
+    `<button class="tab-btn ${_activeSalesmanTab === '__all__' ? 'active' : ''}" onclick="switchSalesmanTab('__all__', this)">🌐 Total</button>` +
+    salesmenInReports.map(name =>
+      `<button class="tab-btn ${_activeSalesmanTab === name ? 'active' : ''}" onclick="switchSalesmanTab('${esc(name)}', this)">👤 ${esc(name)}</button>`
+    ).join('');
+}
+
+function switchSalesmanTab(name, btn) {
+  _activeSalesmanTab = name;
+  document.querySelectorAll('#salesmanTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  // Show/hide Salesman column — only show when Total view
+  const thSalesman = document.getElementById('thSalesman');
+  if (thSalesman) thSalesman.style.display = (name === '__all__') ? '' : 'none';
+
+  renderSalesTable();
+  renderSalesSummary();
+}
+
+/* ── Get filtered sales rows based on active tab ── */
+function getFilteredSalesRows() {
+  // Non-admin: only see own reports
+  if (!currentUser || !currentUser.isAdmin) {
+    return S.salesReports.filter(r => (r.createdBy || 'admin') === currentUser.username);
+  }
+  // Admin total view
+  if (_activeSalesmanTab === '__all__') return [...S.salesReports];
+  // Admin salesman-specific view
+  return S.salesReports.filter(r => (r.createdBy || 'admin') === _activeSalesmanTab);
+}
 
 function openSalesImport() {
-  if (!canEdit()) return;
+  // sales_report access check
+  if (currentUser && !currentUser.isAdmin && !(currentUser.access||[]).includes('sales_report')) {
+    toast('আপনার sales report add করার permission নেই।','err'); return;
+  }
   document.getElementById('sImportDate').value = today();
   document.getElementById('sImportText').value = '';
   document.getElementById('salesStep1').style.display = '';
@@ -2335,13 +2406,19 @@ function parseSalesText() {
 function confirmSalesImport() {
   if (!_pendingSalesEntry) return;
 
-  /* remove existing entry for same date if any */
-  S.salesReports = S.salesReports.filter(r => r.date !== _pendingSalesEntry.date);
+  const salesman = _pendingSalesEntry.createdBy || 'admin';
+  const date     = _pendingSalesEntry.date;
+
+  /* remove existing entry for same date AND same salesman only */
+  S.salesReports = S.salesReports.filter(r =>
+    !(r.date === date && (r.createdBy || 'admin') === salesman)
+  );
   S.salesReports.unshift(_pendingSalesEntry);
   _pendingSalesEntry = null;
 
   save();
   closeMo('moSales');
+  renderSalesmanTabs();
   renderSalesTable();
   renderSalesSummary();
   toast('✔ Sales report save hoyeche!');
@@ -2352,34 +2429,68 @@ function deleteSalesReport(id) {
   if (!canEditEntry(entry)) return;
   if (!confirm('Ei sales report delete korben?')) return;
   S.salesReports = S.salesReports.filter(r => r.id !== id);
-  save(); renderSalesTable(); renderSalesSummary();
+  save();
+  renderSalesmanTabs();
+  renderSalesTable();
+  renderSalesSummary();
   toast('Sales report deleted.','err');
 }
 
-/* ── Render Summary Cards (latest entry) ── */
+/* ── Render Summary Cards (latest entry of current view) ── */
 function renderSalesSummary() {
   const el = document.getElementById('salesSummaryCards');
-  if (!S.salesReports.length) { el.innerHTML = ''; return; }
+  const rows = getFilteredSalesRows();
+  if (!rows.length) { el.innerHTML = ''; return; }
 
-  const latest = [...S.salesReports].sort((a,b)=>b.date.localeCompare(a.date))[0];
-  el.innerHTML = SALE_CATS.map(c => `
-    <div class="stat-card" style="border-color:${c.color}33">
-      <div class="s-label" style="color:${c.color}">${c.label}</div>
-      <div class="s-value" style="color:${c.color};font-size:1.2rem">${latest[c.key] !== null && latest[c.key] !== undefined ? latest[c.key].toLocaleString() : '—'}</div>
-      <div style="font-family:var(--mono);font-size:.6rem;color:var(--text3);margin-top:3px">${latest.date}</div>
-    </div>
-  `).join('');
+  if (_activeSalesmanTab === '__all__' && currentUser && currentUser.isAdmin) {
+    /* Total view: sum all values per category across latest date per salesman */
+    const salesmen = [...new Set(rows.map(r => r.createdBy || 'admin'))];
+    /* for each salesman pick their latest report */
+    const latestPerSalesman = salesmen.map(sm => {
+      return [...rows].filter(r => (r.createdBy||'admin') === sm)
+        .sort((a,b) => b.date.localeCompare(a.date))[0];
+    }).filter(Boolean);
+
+    const totals = {};
+    SALE_CATS.forEach(c => {
+      totals[c.key] = latestPerSalesman.reduce((s, r) => s + (r[c.key] || 0), 0);
+    });
+    const latestDate = latestPerSalesman.map(r=>r.date).sort().reverse()[0] || '';
+
+    el.innerHTML = SALE_CATS.map(c => `
+      <div class="stat-card" style="border-color:${c.color}33">
+        <div class="s-label" style="color:${c.color}">${c.label}</div>
+        <div class="s-value" style="color:${c.color};font-size:1.2rem">${totals[c.key].toLocaleString()}</div>
+        <div style="font-family:var(--mono);font-size:.6rem;color:var(--text3);margin-top:3px">Combined · ${latestDate}</div>
+      </div>
+    `).join('');
+  } else {
+    const latest = [...rows].sort((a,b)=>b.date.localeCompare(a.date))[0];
+    el.innerHTML = SALE_CATS.map(c => `
+      <div class="stat-card" style="border-color:${c.color}33">
+        <div class="s-label" style="color:${c.color}">${c.label}</div>
+        <div class="s-value" style="color:${c.color};font-size:1.2rem">${latest[c.key] !== null && latest[c.key] !== undefined ? latest[c.key].toLocaleString() : '—'}</div>
+        <div style="font-family:var(--mono);font-size:.6rem;color:var(--text3);margin-top:3px">${latest.date}</div>
+      </div>
+    `).join('');
+  }
 }
 
 /* ── Render Sales Table ── */
 function renderSalesTable() {
   const tbody = document.getElementById('salesBody');
   const fDate = document.getElementById('salesFDate') ? document.getElementById('salesFDate').value : '';
-  let rows = [...S.salesReports].sort((a,b)=>b.date.localeCompare(a.date));
+
+  const showSalesmanCol = currentUser && currentUser.isAdmin && _activeSalesmanTab === '__all__';
+  const thSalesman = document.getElementById('thSalesman');
+  if (thSalesman) thSalesman.style.display = showSalesmanCol ? '' : 'none';
+  const colSpan = showSalesmanCol ? 15 : 14;
+
+  let rows = getFilteredSalesRows().sort((a,b)=>b.date.localeCompare(a.date));
   if (fDate) rows = rows.filter(r => r.date === fDate);
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono sales report nei.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:.78rem">Kono sales report nei.</td></tr>`;
     return;
   }
 
@@ -2387,8 +2498,9 @@ function renderSalesTable() {
     <tr class="fu">
       <td class="mono">
         ${r.date}
-        ${r.createdBy ? `<div style="font-family:var(--mono);font-size:.58rem;color:var(--text3);margin-top:2px">@${esc(r.createdBy)}</div>` : ''}
+        ${r.createdBy && !showSalesmanCol ? `<div style="font-family:var(--mono);font-size:.58rem;color:var(--text3);margin-top:2px">@${esc(r.createdBy)}</div>` : ''}
       </td>
+      ${showSalesmanCol ? `<td style="font-family:var(--mono);font-size:.78rem;color:var(--acc2)">@${esc(r.createdBy||'admin')}</td>` : ''}
       ${SALE_CATS.map(c => `<td style="font-family:var(--mono);color:${c.color};font-size:.82rem">${r[c.key] !== null && r[c.key] !== undefined ? r[c.key].toLocaleString() : '<span style="color:var(--text3)">—</span>'}</td>`).join('')}
       <td>
         <button class="btn btn-danger" onclick="deleteSalesReport('${r.id}')">✕</button>
