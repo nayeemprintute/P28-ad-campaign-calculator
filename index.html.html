@@ -1034,6 +1034,23 @@
   </div>
 </div>
 
+<!-- ══ MODAL: Edit Sales Report ══ -->
+<div class="mo" id="moSalesEdit">
+  <div class="mo-box" style="max-width:500px">
+    <h3>✏️ Edit Sales Report</h3>
+    <input type="hidden" id="msSalesId"/>
+    <div class="mo-field">
+      <label>Date</label>
+      <input type="date" id="msSalesDate"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px" id="msSalesFields"></div>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moSalesEdit')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSalesEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL: Add/Edit Campaign ══ -->
 <div class="mo" id="moCamp">
   <div class="mo-box">
@@ -2182,7 +2199,7 @@ function renderAll() {
 /* ══════════════════════════════════════════════════════════
    KEYBOARD & CLICK-OUTSIDE
 ══════════════════════════════════════════════════════════ */
-const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales','moUser'];
+const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales','moSalesEdit','moUser'];
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') ALL_MODALS.forEach(closeMo);
 });
@@ -2352,6 +2369,46 @@ function deleteSalesReport(id) {
   toast('Sales report deleted.','err');
 }
 
+function openSalesEdit(id) {
+  const r = S.salesReports.find(x => x.id === id);
+  if (!r) return;
+  if (!canEditEntry(r)) return;
+
+  document.getElementById('msSalesId').value   = id;
+  document.getElementById('msSalesDate').value = r.date;
+
+  // Build input fields for each category
+  document.getElementById('msSalesFields').innerHTML = SALE_CATS.map(c => `
+    <div>
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:${c.color};margin-bottom:4px">${c.label}</div>
+      <input type="number" id="msSales_${c.key}" min="0" step="1"
+        value="${r[c.key] !== null && r[c.key] !== undefined ? r[c.key] : ''}"
+        placeholder="—"
+        style="background:rgba(255,255,255,.04);border:1px solid var(--bor2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.85rem;padding:8px 10px;outline:none;width:100%"/>
+    </div>
+  `).join('');
+
+  openMo('moSalesEdit');
+}
+
+function saveSalesEdit() {
+  const id = document.getElementById('msSalesId').value;
+  const r  = S.salesReports.find(x => x.id === id);
+  if (!r) return;
+
+  r.date = document.getElementById('msSalesDate').value;
+  SALE_CATS.forEach(c => {
+    const val = document.getElementById('msSales_' + c.key).value.trim();
+    r[c.key] = val === '' ? null : parseInt(val, 10);
+  });
+
+  save();
+  closeMo('moSalesEdit');
+  renderSalesTable();
+  renderSalesSummary();
+  toast('Sales report updated!');
+}
+
 /* ── Render Summary Cards (latest entry overall) ── */
 function renderSalesSummary() {
   const el = document.getElementById('salesSummaryCards');
@@ -2386,6 +2443,7 @@ function renderSalesTable() {
       </td>
       ${SALE_CATS.map(c => `<td style="font-family:var(--mono);color:${c.color};font-size:.82rem">${r[c.key] !== null && r[c.key] !== undefined ? r[c.key].toLocaleString() : '<span style="color:var(--text3)">—</span>'}</td>`).join('')}
       <td>
+        <button class="btn btn-edit" onclick="openSalesEdit('${r.id}')">✏️</button>
         <button class="btn btn-danger" onclick="deleteSalesReport('${r.id}')">✕</button>
       </td>
     </tr>
