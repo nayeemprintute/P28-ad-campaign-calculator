@@ -573,6 +573,17 @@
       #quickSpendBar select { flex:1; font-size:.8rem; padding:9px 10px; }
       #quickSpendBar input[type=number] { width:100px; font-size:.85rem; padding:9px 10px; }
       #quickSpendBar .btn { padding:9px 13px; font-size:.8rem; flex-shrink:0; }
+
+      /* Sales page responsive */
+      #salesSummaryCards { grid-template-columns:repeat(2,1fr) !important; gap:8px !important; }
+      #page-sales .panel-title { flex-wrap:wrap; gap:8px; }
+      #page-sales .filter-row { gap:6px; }
+      #page-sales .filter-row input[type=date] { width:100%; }
+      #page-sales .section-head { flex-direction:column; align-items:flex-start; }
+      /* Sales table — hide low-priority columns on mobile, show as cards */
+      #page-sales tbody td[data-label="Disqualified"],
+      #page-sales tbody td[data-label="Pend. Design"],
+      #page-sales tbody td[data-label="Revision"] { display:none; }
     }
   </style>
 </head>
@@ -641,7 +652,7 @@
 
     <div class="sidebar-balance">
       <div class="bal-label">Available Balance</div>
-      <div class="bal-amount" id="balDisplay">৳0.00</div>
+      <div class="bal-amount" id="balDisplay">$0.00</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%;justify-content:center;font-size:.72rem" onclick="openBalHistory()">
         📋 Balance History
       </button>
@@ -691,7 +702,7 @@
       <div id="topbarTitle">Dashboard</div>
       <div class="header-date" id="headerDate"></div>
       <div class="topbar-balance-pill" id="topBalPill">
-        <span>⚡</span> <span id="topBalAmt">৳0.00</span>
+        <span>⚡</span> <span id="topBalAmt">$0.00</span>
       </div>
     </div>
 
@@ -711,9 +722,9 @@
 
         <!-- Stat Cards -->
         <div class="stats-grid">
-          <div class="stat-card" style="color:var(--red)"><div class="s-label">Spent Today</div><div class="s-value red" id="sSpdToday">৳0.00</div></div>
-          <div class="stat-card" style="color:var(--yellow)"><div class="s-label">All-Time Spent</div><div class="s-value ylw" id="sAllTime">৳0.00</div></div>
-          <div class="stat-card" style="color:var(--green)"><div class="s-label">Total Added</div><div class="s-value grn" id="sTotalAdded">৳0.00</div></div>
+          <div class="stat-card" style="color:var(--red)"><div class="s-label">Spent Today</div><div class="s-value red" id="sSpdToday">$0.00</div></div>
+          <div class="stat-card" style="color:var(--yellow)"><div class="s-label">All-Time Spent</div><div class="s-value ylw" id="sAllTime">$0.00</div></div>
+          <div class="stat-card" style="color:var(--green)"><div class="s-label">Total Added</div><div class="s-value grn" id="sTotalAdded">$0.00</div></div>
           <div class="stat-card" style="color:var(--acc2)"><div class="s-label">Campaigns</div><div class="s-value acc" id="sCampCount">0</div></div>
           <div class="stat-card" style="color:var(--purple)"><div class="s-label">Total Entries</div><div class="s-value pur" id="sLogCount">0</div></div>
         </div>
@@ -768,7 +779,7 @@
         <div class="balance-hero">
           <div>
             <div class="bal-label">Current Available Balance</div>
-            <div class="bal-amount" id="balDisplay2">৳0.00</div>
+            <div class="bal-amount" id="balDisplay2">$0.00</div>
             <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="openBalHistory()">
               📋 Balance History
             </button>
@@ -776,7 +787,7 @@
           <div class="add-bal-form">
             <div class="sec-label">Add Balance</div>
             <div class="add-bal-row">
-              <input type="number" id="addBalAmt" placeholder="Amount (৳)" min="0" step="0.01"/>
+              <input type="number" id="addBalAmt" placeholder="Amount ($)" min="0" step="0.01"/>
             </div>
             <div class="add-bal-row">
               <input type="date" id="addBalDate" style="flex:1"/>
@@ -814,7 +825,7 @@
               <div class="empty"><div class="ei">💸</div>Add a campaign first.</div>
             </div>
             <div class="submit-bar" id="submitBar" style="display:none">
-              <div class="today-prev">Total: <span id="todayPrev">৳0.00</span></div>
+              <div class="today-prev">Total: <span id="todayPrev">$0.00</span></div>
               <button class="btn btn-primary" onclick="submitSpend()">✔ Submit Spends</button>
             </div>
           </div>
@@ -974,7 +985,7 @@
   <select id="qsCamp">
     <option value="">Campaign...</option>
   </select>
-  <input type="number" id="qsAmt" placeholder="৳ Total" min="0" step="0.01"/>
+  <input type="number" id="qsAmt" placeholder="$ Total" min="0" step="0.01"/>
   <button class="btn btn-primary" onclick="quickSubmit()">✔ Add</button>
 </div>
 
@@ -1216,7 +1227,7 @@
   <div class="mo-box">
     <h3>Edit Spend Entry</h3>
     <div class="mo-field"><label>Date</label><input type="date" id="msDate"/></div>
-    <div class="mo-field"><label>Camp. Total (৳) — এই campaign এর সর্বমোট খরচ</label><input type="number" id="msCampTotal" min="0" step="0.01"/></div>
+    <div class="mo-field"><label>Camp. Total ($) — এই campaign এর সর্বমোট খরচ</label><input type="number" id="msCampTotal" min="0" step="0.01"/></div>
     <input type="hidden" id="msAmt"/>
     <input type="hidden" id="msId"/>
     <div class="mo-actions">
@@ -1231,7 +1242,7 @@
   <div class="mo-box">
     <h3>Edit Balance Top-up</h3>
     <div class="mo-field"><label>Date</label><input type="date" id="mtDate"/></div>
-    <div class="mo-field"><label>Amount (৳)</label><input type="number" id="mtAmt" min="0" step="0.01"/></div>
+    <div class="mo-field"><label>Amount ($)</label><input type="number" id="mtAmt" min="0" step="0.01"/></div>
     <div class="mo-field"><label>Note (optional)</label><input type="text" id="mtNote" placeholder="e.g. Bank transfer"/></div>
     <input type="hidden" id="mtId"/>
     <div class="mo-actions">
@@ -1581,7 +1592,7 @@ async function initApp() {
 /* ══════════════════════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════════════════════ */
-const fmt   = n => { const parts = parseFloat(n||0).toFixed(2).split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+\b)/g, ','); return '\u09F3' + parts.join('.'); };
+const fmt   = n => { const parts = parseFloat(n||0).toFixed(2).split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+\b)/g, ','); return '$' + parts.join('.'); };
 const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const today = () => new Date().toISOString().split('T')[0];
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -2191,7 +2202,7 @@ function renderDailyInputs() {
         <small style="color:var(--text3)">Previous Total: ${fmt(prevTotal)}</small>
       </div>
       <input type="number" class="ds-input d-num" data-id="${c.id}"
-        placeholder="৳ Total Spent" min="0" step="0.01" oninput="updatePreview()"/>
+        placeholder="$ Total Spent" min="0" step="0.01" oninput="updatePreview()"/>
     </div>
   `;
   }).join('');
@@ -2794,18 +2805,18 @@ window.addEventListener('load', () => {
    SALES REPORT — FIXED CATEGORIES
 ══════════════════════════════════════════════════════════ */
 const SALE_CATS = [
-  { key:'today',          label:'Today (New Leads)',    color:'var(--accent)' },
-  { key:'noResponse',     label:'No Response',          color:'var(--red)' },
-  { key:'priceHigh',      label:'Price High',           color:'var(--yellow)' },
-  { key:'later',          label:'Later',                color:'var(--text2)' },
-  { key:'trustIssue',     label:'Trust Issue',          color:'#fb923c' },
-  { key:'followUp',       label:'Follow Up',            color:'var(--green)' },
-  { key:'disqualified',   label:'Disqualified',         color:'var(--red)' },
-  { key:'quotation',      label:'Quotation',            color:'var(--purple)' },
-  { key:'pendingDesign',  label:'Pending Design Charge',color:'var(--yellow)' },
-  { key:'design',         label:'Design',               color:'#f472b6' },
-  { key:'revision',       label:'Revision',             color:'#60a5fa' },
-  { key:'pendingPayment', label:'Pending Payment',      color:'var(--acc2)' },
+  { key:'today',          label:'Today (New Leads)',    shortLabel:'New Leads',    color:'var(--accent)' },
+  { key:'noResponse',     label:'No Response',          shortLabel:'No Resp.',     color:'var(--red)' },
+  { key:'priceHigh',      label:'Price High',           shortLabel:'Price High',   color:'var(--yellow)' },
+  { key:'later',          label:'Later',                shortLabel:'Later',        color:'var(--text2)' },
+  { key:'trustIssue',     label:'Trust Issue',          shortLabel:'Trust Issue',  color:'#fb923c' },
+  { key:'followUp',       label:'Follow Up',            shortLabel:'Follow Up',    color:'var(--green)' },
+  { key:'disqualified',   label:'Disqualified',         shortLabel:'Disqual.',     color:'var(--red)' },
+  { key:'quotation',      label:'Quotation',            shortLabel:'Quotation',    color:'var(--purple)' },
+  { key:'pendingDesign',  label:'Pending Design Charge',shortLabel:'Pend.Design',  color:'var(--yellow)' },
+  { key:'design',         label:'Design',               shortLabel:'Design',       color:'#f472b6' },
+  { key:'revision',       label:'Revision',             shortLabel:'Revision',     color:'#60a5fa' },
+  { key:'pendingPayment', label:'Pending Payment',      shortLabel:'Pend.Pay',     color:'var(--acc2)' },
 ];
 
 /* keyword map for parsing */
@@ -2966,12 +2977,12 @@ function renderSalesTable() {
 
   tbody.innerHTML = rows.map(r => `
     <tr class="fu">
-      <td class="mono">
+      <td class="mono" data-label="Date">
         ${r.date}
         ${r.createdBy ? `<div style="font-family:var(--mono);font-size:.58rem;color:var(--text3);margin-top:2px">@${esc(r.createdBy)}</div>` : ''}
       </td>
-      ${SALE_CATS.map(c => `<td style="font-family:var(--mono);color:${c.color};font-size:.82rem">${r[c.key] !== null && r[c.key] !== undefined ? r[c.key].toLocaleString() : '<span style="color:var(--text3)">—</span>'}</td>`).join('')}
-      <td>
+      ${SALE_CATS.map(c => `<td data-label="${c.shortLabel}" style="font-family:var(--mono);color:${c.color};font-size:.82rem">${r[c.key] !== null && r[c.key] !== undefined ? r[c.key].toLocaleString() : '<span style="color:var(--text3)">—</span>'}</td>`).join('')}
+      <td data-label="Actions">
         <button class="btn btn-edit" onclick="openSalesEdit('${r.id}')">✏️</button>
         <button class="btn btn-danger" onclick="deleteSalesReport('${r.id}')">✕</button>
       </td>
@@ -3050,9 +3061,9 @@ function renderAnalytics() {
   const pendPayTotal  = latestSR ? (latestSR.pendingPayment || 0) : 0;
 
   kpiEl.innerHTML = [
-    { label:'Total Ad Spend',    val:'৳'+totalSpend.toFixed(2),             color:'var(--red)' },
+    { label:'Total Ad Spend',    val:'$'+totalSpend.toFixed(2),             color:'var(--red)' },
     { label:'Total New Leads',   val:totalLeads.toLocaleString(),            color:'var(--accent)' },
-    { label:'Avg Cost / Lead',   val: avgCPL > 0 ? '৳'+avgCPL.toFixed(2) : '—', color:'var(--yellow)' },
+    { label:'Avg Cost / Lead',   val: avgCPL > 0 ? '$'+avgCPL.toFixed(2) : '—', color:'var(--yellow)' },
     { label:'Follow Up (latest)',val:followUpTotal.toLocaleString(),         color:'var(--green)' },
     { label:'Pending Payment',   val:pendPayTotal.toLocaleString(),          color:'var(--purple)' },
   ].map(k => `
@@ -3073,7 +3084,7 @@ function renderAnalytics() {
         labels,
         datasets: [
           {
-            label: 'Ad Spend (৳)',
+            label: 'Ad Spend ($)',
             data: rowsAsc.map(r => r.adSpend),
             backgroundColor: 'rgba(255,78,106,0.55)',
             borderColor: '#ff4e6a',
@@ -3105,7 +3116,7 @@ function renderAnalytics() {
         },
         scales: {
           x:      { ticks:{ color:'#525c72', font:{family:"'DM Mono',monospace",size:10} }, grid:{ color:'#252a3a' } },
-          ySpend: { position:'left',  ticks:{ color:'#ff4e6a', font:{family:"'DM Mono',monospace",size:10}, callback: v=>'৳'+v }, grid:{ color:'#252a3a' } },
+          ySpend: { position:'left',  ticks:{ color:'#ff4e6a', font:{family:"'DM Mono',monospace",size:10}, callback: v=>'$'+v }, grid:{ color:'#252a3a' } },
           yLeads: { position:'right', ticks:{ color:'#3d7eff', font:{family:"'DM Mono',monospace",size:10} }, grid:{ drawOnChartArea:false } },
         },
       },
@@ -3122,7 +3133,7 @@ function renderAnalytics() {
       data: {
         labels: cplRows.map(r => r.date.slice(5)),
         datasets: [{
-          label: 'Cost per Lead (৳)',
+          label: 'Cost per Lead ($)',
           data: cplRows.map(r => parseFloat((r.adSpend / r.newLeads).toFixed(2))),
           borderColor: '#f5c542',
           backgroundColor: 'rgba(245,197,66,0.1)',
@@ -3138,11 +3149,11 @@ function renderAnalytics() {
           legend: { labels:{ color:'#8892a8', font:{family:"'DM Mono',monospace",size:11} } },
           tooltip: { backgroundColor:'#1c2030', borderColor:'#2e3550', borderWidth:1,
             titleFont:{family:"'DM Mono',monospace"}, bodyFont:{family:"'DM Mono',monospace"},
-            callbacks:{ label: ctx => '৳ '+ctx.parsed.y } },
+            callbacks:{ label: ctx => '$ '+ctx.parsed.y } },
         },
         scales: {
           x: { ticks:{color:'#525c72',font:{family:"'DM Mono',monospace",size:10}}, grid:{color:'#252a3a'} },
-          y: { ticks:{color:'#f5c542',font:{family:"'DM Mono',monospace",size:10}, callback:v=>'৳'+v}, grid:{color:'#252a3a'} },
+          y: { ticks:{color:'#f5c542',font:{family:"'DM Mono',monospace",size:10}, callback:v=>'$'+v}, grid:{color:'#252a3a'} },
         },
       },
     });
@@ -3208,11 +3219,11 @@ function renderAnalytics() {
     } else {
       tbody.innerHTML = rows.map(r => {
         const cpl = (r.hasSales && r.newLeads > 0 && r.hasSPend)
-          ? '৳'+(r.adSpend/r.newLeads).toFixed(2)
+          ? '$'+(r.adSpend/r.newLeads).toFixed(2)
           : '<span style="color:var(--text3)">—</span>';
         return `<tr class="fu">
           <td class="mono">${r.date}</td>
-          <td class="red mono">${r.adSpend > 0 ? '৳'+r.adSpend.toFixed(2) : '<span style="color:var(--text3)">—</span>'}</td>
+          <td class="red mono">${r.adSpend > 0 ? '$'+r.adSpend.toFixed(2) : '<span style="color:var(--text3)">—</span>'}</td>
           <td style="color:var(--accent);font-family:var(--mono)">${r.newLeads !== null ? r.newLeads : '<span style="color:var(--text3)">—</span>'}</td>
           <td class="ylw mono">${cpl}</td>
           <td style="color:var(--green);font-family:var(--mono)">${r.followUp !== null ? r.followUp : '<span style="color:var(--text3)">—</span>'}</td>
