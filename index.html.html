@@ -2590,17 +2590,14 @@ function saveReport() {
     labelValues[lbId] = val === '' ? 0 : parseFloat(val);
   });
 
-  // Get campaign reach/impressions for selected campaign
-  const riData = campId ? (S.reachImpressions[campId] || {}) : {};
-
   if (editId) {
     const idx = S.customReports.findIndex(x => x.id === editId);
     if (idx !== -1) {
-      S.customReports[idx] = { ...S.customReports[idx], title, date, campaignId: campId, notes, labelValues, riSnapshot: riData };
+      S.customReports[idx] = { ...S.customReports[idx], title, date, campaignId: campId, notes, labelValues };
       toast('Report updated!');
     }
   } else {
-    S.customReports.unshift({ id: uid(), title, date, campaignId: campId, notes, labelValues, riSnapshot: riData, createdAt: today(), createdBy: currentUser ? currentUser.username : 'admin' });
+    S.customReports.unshift({ id: uid(), title, date, campaignId: campId, notes, labelValues, createdAt: today(), createdBy: currentUser ? currentUser.username : 'admin' });
     toast('✔ Report save হয়েছে!');
   }
 
@@ -2620,68 +2617,110 @@ function deleteReport(id) {
 function viewReport(id) {
   const rp = S.customReports.find(x => x.id === id);
   if (!rp) return;
+
+  // ── Live spend data for report date ──
+  const activeCampsForReport = rp.campaignId
+    ? S.campaigns.filter(c => c.id === rp.campaignId)
+    : S.campaigns.filter(c => (c.status||'active') !== 'deleted');
+
+  const spendByCamp = activeCampsForReport.map(c => {
+    const spent = S.logs
+      .filter(l => l.campaignId === c.id && l.date === rp.date)
+      .reduce((s,l) => s + l.todaySpent, 0);
+    return { camp: c, spent };
+  }).filter(x => x.spent > 0);
+
+  const totalSpend = spendByCamp.reduce((s,x) => s + x.spent, 0);
+
+  // ── Live reach & impression ──
+  const riRows = activeCampsForReport.map(c => {
+    const ri = S.reachImpressions[c.id] || {};
+    return { camp: c, reach: ri.reach, impressions: ri.impressions };
+  }).filter(x => x.reach != null || x.impressions != null);
+
+  let html = '';
+
+  // Date & Campaign header
   const camp = rp.campaignId ? S.campaigns.find(c => c.id === rp.campaignId) : null;
+  html += `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+    <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:11px 16px;flex:1;min-width:120px">
+      <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Date</div>
+      <div style="font-weight:700;color:var(--text);font-size:.95rem">${rp.date}</div>
+    </div>
+    ${camp ? `<div style="background:${camp.color||'#3d7eff'}18;border:1px solid ${camp.color||'#3d7eff'}44;border-radius:var(--r);padding:11px 16px;flex:1;min-width:120px">
+      <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Campaign</div>
+      <div style="font-weight:700;color:${camp.color||'#3d7eff'};font-size:.95rem">${esc(camp.name)}</div>
+    </div>` : '<div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:11px 16px;flex:1;min-width:120px"><div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Campaign</div><div style="font-weight:700;color:var(--text2);font-size:.9rem">All Campaigns</div></div>'}
+  </div>`;
 
-  let html = `
-    <div style="margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:.63rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Date</div>
-      <div style="font-weight:700;color:var(--text)">${rp.date}</div>
-    </div>`;
-
-  if (camp) {
-    html += `
-    <div style="margin-bottom:16px">
-      <div style="font-family:var(--mono);font-size:.63rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Campaign</div>
-      <div style="font-weight:700;color:${camp.color||'#3d7eff'}">${esc(camp.name)}</div>
-    </div>`;
-
-    // Reach & Impression from snapshot
-    const ri = rp.riSnapshot || {};
-    if (ri.reach !== null && ri.reach !== undefined || ri.impressions !== null && ri.impressions !== undefined) {
-      html += `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
-          <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Reach</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--purple)">${ri.reach !== null && ri.reach !== undefined ? ri.reach.toLocaleString() : '—'}</div>
-        </div>
-        <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
-          <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Impressions</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--acc2)">${ri.impressions !== null && ri.impressions !== undefined ? ri.impressions.toLocaleString() : '—'}</div>
-        </div>
+  // ── Ad Spend section ──
+  if (totalSpend > 0) {
+    html += `<div style="margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:8px">💸 Ad Spend — ${rp.date}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">`;
+    spendByCamp.forEach(({ camp: c, spent }) => {
+      html += `<div style="background:var(--sur2);border:1px solid rgba(255,78,106,.25);border-left:3px solid ${c.color||'#ff4e6a'};border-radius:var(--r);padding:11px 13px">
+        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">${esc(c.name)}</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(spent)}</div>
+      </div>`;
+    });
+    if (spendByCamp.length > 1) {
+      html += `<div style="background:rgba(255,78,106,.1);border:1px solid rgba(255,78,106,.35);border-radius:var(--r);padding:11px 13px">
+        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Total Spend</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(totalSpend)}</div>
       </div>`;
     }
-
-    // Ad spend for this campaign
-    const campSpend = S.logs.filter(l => l.campaignId === rp.campaignId && l.date === rp.date).reduce((s,l) => s+l.todaySpent,0);
-    if (campSpend > 0) {
-      html += `
-      <div style="margin-bottom:16px;background:var(--sur2);border:1px solid rgba(255,78,106,.3);border-radius:var(--r);padding:12px">
-        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:5px">Ad Spend (${rp.date})</div>
-        <div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(campSpend)}</div>
-      </div>`;
-    }
+    html += `</div></div>`;
+  } else {
+    html += `<div style="margin-bottom:16px;background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Ad Spend — ${rp.date}</div>
+      <div style="font-size:.85rem;color:var(--text3)">—</div>
+    </div>`;
   }
 
-  // Label values
+  // ── Reach & Impression section ──
+  if (riRows.length) {
+    html += `<div style="margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);margin-bottom:8px">📡 Reach &amp; Impressions</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">`;
+    riRows.forEach(({ camp: c, reach, impressions }) => {
+      html += `<div style="background:var(--sur2);border:1px solid var(--border);border-left:3px solid ${c.color||'#a78bfa'};border-radius:var(--r);padding:11px 13px">
+        <div style="font-weight:600;font-size:.8rem;color:${c.color||'#a78bfa'};margin-bottom:8px">${esc(c.name)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div style="font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Reach</div>
+            <div style="font-size:1rem;font-weight:700;color:var(--purple)">${reach != null ? reach.toLocaleString() : '—'}</div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Impressions</div>
+            <div style="font-size:1rem;font-weight:700;color:var(--acc2)">${impressions != null ? impressions.toLocaleString() : '—'}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── Label values ──
   if (Object.keys(rp.labelValues || {}).length) {
-    html += `<div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Label Values</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">`;
+    html += `<div style="margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:8px">🏷️ Label Values</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">`;
     Object.entries(rp.labelValues).forEach(([lbId, val]) => {
       const lb = S.customLabels.find(x => x.id === lbId);
       const lbName  = lb ? lb.name  : lbId;
       const lbColor = lb ? lb.color : 'var(--text2)';
-      html += `
-      <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px">
-        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:${lbColor};margin-bottom:5px">${esc(lbName)}</div>
+      html += `<div style="background:var(--sur2);border:1px solid ${lbColor}33;border-left:3px solid ${lbColor};border-radius:var(--r);padding:11px 13px">
+        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:${lbColor};margin-bottom:4px">${esc(lbName)}</div>
         <div style="font-size:1.1rem;font-weight:700;color:${lbColor}">${typeof val === 'number' ? val.toLocaleString() : val}</div>
       </div>`;
     });
-    html += '</div>';
+    html += `</div></div>`;
   }
 
+  // ── Notes ──
   if (rp.notes) {
-    html += `
-    <div style="margin-bottom:8px">
+    html += `<div>
       <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Notes</div>
       <div style="font-size:.84rem;color:var(--text2);line-height:1.6;background:var(--sur2);border-radius:var(--r);padding:12px">${esc(rp.notes)}</div>
     </div>`;
@@ -3188,4 +3227,3 @@ function renderAnalytics() {
 </script>
 </body>
 </html>
-                                                                                                 
