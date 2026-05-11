@@ -665,6 +665,9 @@
       <button class="nav-item" onclick="navTo('analytics',this)" id="nav-analytics">
         <span class="nav-icon">🔬</span> Analytics
       </button>
+      <button class="nav-item" onclick="navTo('report',this)" id="nav-report">
+        <span class="nav-icon">📝</span> Custom Report
+      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -929,8 +932,40 @@
         </div>
       </div><!-- /page-users -->
 
-    </div><!-- /page-content -->
-  </div><!-- /mainArea -->
+      <!-- ══════════ PAGE: CUSTOM REPORT ══════════ -->
+      <div class="page-section" id="page-report">
+
+        <div class="section-head">
+          <div>
+            <h2>Custom Report</h2>
+            <div class="sub">নিজের label বানান, value দিন, report তৈরি করুন</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="openManageLabels()">🏷️ Labels Manage</button>
+            <button class="btn btn-primary btn-sm" onclick="openCreateReport()">+ New Report</button>
+          </div>
+        </div>
+
+        <!-- Reach & Impression Panel -->
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-title"><span class="dot" style="background:var(--purple)"></span> Reach &amp; Impression (Manual)</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px" id="riCampaignList">
+            <div class="empty" style="padding:16px;grid-column:1/-1">Campaign add korun Spend Entry page e.</div>
+          </div>
+          <button class="btn btn-green btn-sm" onclick="saveReachImpressions()">💾 Save Reach &amp; Impressions</button>
+        </div>
+
+        <!-- Reports List -->
+        <div class="panel">
+          <div class="panel-title"><span class="dot" style="background:var(--accent)"></span> Saved Reports</div>
+          <div id="reportList">
+            <div class="empty"><div class="ei">📝</div>Kono report nei. "+ New Report" chepun.</div>
+          </div>
+        </div>
+
+      </div><!-- /page-report -->
+
+    
 
 </div><!-- /appWrap -->
 
@@ -941,6 +976,88 @@
   </select>
   <input type="number" id="qsAmt" placeholder="৳ Total" min="0" step="0.01"/>
   <button class="btn btn-primary" onclick="quickSubmit()">✔ Add</button>
+</div>
+
+<!-- ══ MODAL: Manage Labels ══ -->
+<div class="mo" id="moLabels">
+  <div class="mo-box" style="max-width:460px">
+    <h3>🏷️ Labels Manage</h3>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="newLabelName" placeholder="Label নাম (যেমন: Conversion, CPC)" maxlength="40" style="flex:1"/>
+      <input type="color" id="newLabelColor" value="#3d7eff" style="width:42px;height:38px;padding:2px;border:1px solid var(--bor2);border-radius:8px;background:var(--sur2);cursor:pointer;flex-shrink:0"/>
+      <button class="btn btn-primary btn-sm" onclick="addLabel()">+ Add</button>
+    </div>
+    <div id="labelListItems" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moLabels')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit Label ══ -->
+<div class="mo" id="moLabelEdit">
+  <div class="mo-box" style="max-width:360px">
+    <h3>✏️ Edit Label</h3>
+    <input type="hidden" id="editLabelId"/>
+    <div class="mo-field">
+      <label>Label নাম</label>
+      <input type="text" id="editLabelName" maxlength="40"/>
+    </div>
+    <div class="mo-field">
+      <label>Color</label>
+      <input type="color" id="editLabelColor" style="width:100%;height:40px;padding:2px;border:1px solid var(--bor2);border-radius:8px;background:var(--sur2);cursor:pointer"/>
+    </div>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moLabelEdit')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLabelEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Create / Edit Report ══ -->
+<div class="mo" id="moReport">
+  <div class="mo-box" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <h3 id="moReportTitle">📝 New Report</h3>
+    <input type="hidden" id="moReportId"/>
+    <div class="mo-field">
+      <label>Report Title</label>
+      <input type="text" id="moReportName" placeholder="যেমন: May Week 1 Report" maxlength="60"/>
+    </div>
+    <div class="mo-field">
+      <label>Date</label>
+      <input type="date" id="moReportDate"/>
+    </div>
+    <div class="mo-field">
+      <label>Campaign (optional)</label>
+      <select id="moReportCamp">
+        <option value="">— All / None —</option>
+      </select>
+    </div>
+    <div class="mo-field">
+      <label>Labels ও Value</label>
+      <div id="moReportLabels" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
+      <div style="font-family:var(--mono);font-size:.65rem;color:var(--text3);margin-top:6px">Label select করুন এবং value দিন। Labels Manage থেকে নতুন label যোগ করুন।</div>
+    </div>
+    <div class="mo-field">
+      <label>Notes (optional)</label>
+      <textarea id="moReportNotes" rows="3" placeholder="Extra notes..."></textarea>
+    </div>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moReport')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReport()">💾 Save Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: View Report ══ -->
+<div class="mo" id="moReportView">
+  <div class="mo-box" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <h3 id="moReportViewTitle">📄 Report</h3>
+    <div id="moReportViewContent"></div>
+    <div class="mo-actions">
+      <button class="btn btn-ghost" onclick="closeMo('moReportView')">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -1166,12 +1283,15 @@ async function saveUsers() {
   if (!window._fbReady) return;
   try {
     await window._fbSave({
-      balance:      S.balance,
-      campaigns:    S.campaigns,
-      logs:         S.logs,
-      topups:       S.topups,
-      salesReports: S.salesReports,
-      users:        S.users,
+      balance:          S.balance,
+      campaigns:        S.campaigns,
+      logs:             S.logs,
+      topups:           S.topups,
+      salesReports:     S.salesReports,
+      users:            S.users,
+      customLabels:     S.customLabels,
+      customReports:    S.customReports,
+      reachImpressions: S.reachImpressions,
     });
   } catch(e) { console.error('saveUsers error:', e); }
 }
@@ -1354,12 +1474,15 @@ async function deleteUser(id) {
    STATE
 ══════════════════════════════════════════════════════════ */
 let S = {
-  balance:      0,
-  campaigns:    [],
-  logs:         [],
-  topups:       [],
-  salesReports: [],
-  users:        [],
+  balance:          0,
+  campaigns:        [],
+  logs:             [],
+  topups:           [],
+  salesReports:     [],
+  users:            [],
+  customLabels:     [],
+  customReports:    [],
+  reachImpressions: {},
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -1373,12 +1496,15 @@ function save() {
     if (!window._fbReady) return;
     try {
       await window._fbSave({
-        balance:      S.balance,
-        campaigns:    S.campaigns,
-        logs:         S.logs,
-        topups:       S.topups,
-        salesReports: S.salesReports,
-        users:        S.users,
+        balance:          S.balance,
+        campaigns:        S.campaigns,
+        logs:             S.logs,
+        topups:           S.topups,
+        salesReports:     S.salesReports,
+        users:            S.users,
+        customLabels:     S.customLabels,
+        customReports:    S.customReports,
+        reachImpressions: S.reachImpressions,
       });
     } catch(e) { console.error('Firebase save error:', e); }
   }, 600);
@@ -1395,11 +1521,14 @@ async function initApp() {
     try {
       const data = await window._fbGet();
       if (data) {
-        S.balance      = parseFloat(data.balance   || 0);
-        S.campaigns    = data.campaigns    || [];
-        S.logs         = data.logs         || [];
-        S.topups       = data.topups       || [];
-        S.salesReports = data.salesReports || [];
+        S.balance          = parseFloat(data.balance   || 0);
+        S.campaigns        = data.campaigns    || [];
+        S.logs             = data.logs         || [];
+        S.topups           = data.topups       || [];
+        S.salesReports     = data.salesReports || [];
+        S.customLabels     = data.customLabels     || [];
+        S.customReports    = data.customReports    || [];
+        S.reachImpressions = data.reachImpressions || {};
         const loadedUsers = data.users || [];
         if (!loadedUsers.find(u => u.id === 'admin')) loadedUsers.unshift(DEFAULT_ADMIN);
         S.users = loadedUsers;
@@ -1425,11 +1554,14 @@ async function initApp() {
 
     // Live sync from Firestore
     window._fbListen(data => {
-      S.balance      = parseFloat(data.balance      || 0);
-      S.campaigns    = data.campaigns    || [];
-      S.logs         = data.logs         || [];
-      S.topups       = data.topups       || [];
-      S.salesReports = data.salesReports || [];
+      S.balance          = parseFloat(data.balance      || 0);
+      S.campaigns        = data.campaigns    || [];
+      S.logs             = data.logs         || [];
+      S.topups           = data.topups       || [];
+      S.salesReports     = data.salesReports || [];
+      S.customLabels     = data.customLabels     || [];
+      S.customReports    = data.customReports    || [];
+      S.reachImpressions = data.reachImpressions || {};
       // Only sync users if admin is on the users page (avoid overwriting mid-edit)
       const newUsers = data.users || [];
       if (!newUsers.find(u => u.id === 'admin')) newUsers.unshift(DEFAULT_ADMIN);
@@ -2194,12 +2326,13 @@ function renderAll() {
   renderSalesTable();
   renderSalesSummary();
   renderAnalytics();
+  renderReportPage();
 }
 
 /* ══════════════════════════════════════════════════════════
    KEYBOARD & CLICK-OUTSIDE
 ══════════════════════════════════════════════════════════ */
-const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales','moSalesEdit','moUser'];
+const ALL_MODALS = ['moCamp','moSpend','moTopup','mobalHist','moSales','moSalesEdit','moUser','moLabels','moLabelEdit','moReport','moReportView'];
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') ALL_MODALS.forEach(closeMo);
 });
@@ -2220,6 +2353,7 @@ const PAGE_TITLES = {
   spend:     'Spend Entry',
   sales:     'Sales Report',
   analytics: 'Analytics',
+  report:    'Custom Report',
   users:     'Manage Users',
 };
 
@@ -2243,6 +2377,362 @@ function navTo(page, btn) {
   // Re-render analytics when switching to that page (charts need visible container)
   if (page === 'analytics') setTimeout(renderAnalytics, 50);
   if (page === 'users') renderUserList();
+  if (page === 'report') renderReportPage();
+}
+
+/* ══════════════════════════════════════════════════════════
+   CUSTOM REPORT SYSTEM
+══════════════════════════════════════════════════════════ */
+
+/* ── Label Management ── */
+function openManageLabels() {
+  renderLabelListItems();
+  openMo('moLabels');
+  setTimeout(() => document.getElementById('newLabelName').focus(), 120);
+}
+
+function renderLabelListItems() {
+  const el = document.getElementById('labelListItems');
+  if (!S.customLabels.length) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:.75rem;color:var(--text3);text-align:center;padding:16px">Kono label nei. উপরে নাম দিয়ে + Add চাপুন।</div>';
+    return;
+  }
+  el.innerHTML = S.customLabels.map(lb => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px">
+      <span style="width:14px;height:14px;border-radius:3px;background:${lb.color};flex-shrink:0;display:inline-block"></span>
+      <span style="flex:1;font-size:.85rem;font-weight:600;color:var(--text)">${esc(lb.name)}</span>
+      <button class="btn btn-edit" onclick="openEditLabel('${lb.id}')">✏️</button>
+      <button class="btn btn-danger" onclick="deleteLabel('${lb.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function addLabel() {
+  const name  = document.getElementById('newLabelName').value.trim();
+  const color = document.getElementById('newLabelColor').value || '#3d7eff';
+  if (!name) { toast('Label নাম দিন।','err'); return; }
+  if (S.customLabels.find(l => l.name.toLowerCase() === name.toLowerCase())) {
+    toast('এই নামের label আছে।','err'); return;
+  }
+  S.customLabels.push({ id: uid(), name, color });
+  document.getElementById('newLabelName').value = '';
+  save();
+  renderLabelListItems();
+  toast(`Label "${name}" add হয়েছে!`);
+}
+
+function openEditLabel(id) {
+  const lb = S.customLabels.find(x => x.id === id);
+  if (!lb) return;
+  document.getElementById('editLabelId').value    = id;
+  document.getElementById('editLabelName').value  = lb.name;
+  document.getElementById('editLabelColor').value = lb.color;
+  closeMo('moLabels');
+  openMo('moLabelEdit');
+}
+
+function saveLabelEdit() {
+  const id    = document.getElementById('editLabelId').value;
+  const name  = document.getElementById('editLabelName').value.trim();
+  const color = document.getElementById('editLabelColor').value;
+  if (!name) { toast('Label নাম দিন।','err'); return; }
+  const lb = S.customLabels.find(x => x.id === id);
+  if (!lb) return;
+  lb.name  = name;
+  lb.color = color;
+  save();
+  closeMo('moLabelEdit');
+  openMo('moLabels');
+  renderLabelListItems();
+  toast('Label updated!');
+}
+
+function deleteLabel(id) {
+  if (!confirm('এই label delete করবেন? Report-এ থাকা label entries অক্ষত থাকবে।')) return;
+  S.customLabels = S.customLabels.filter(x => x.id !== id);
+  save();
+  renderLabelListItems();
+  toast('Label deleted.','err');
+}
+
+/* ── Reach & Impression ── */
+function renderRIInputs() {
+  const el = document.getElementById('riCampaignList');
+  if (!el) return;
+  const activeCamps = S.campaigns.filter(c => (c.status || 'active') !== 'deleted');
+  if (!activeCamps.length) {
+    el.innerHTML = '<div class="empty" style="padding:16px;grid-column:1/-1">Campaign add korun Spend Entry page e.</div>';
+    return;
+  }
+  el.innerHTML = activeCamps.map(c => {
+    const ri = S.reachImpressions[c.id] || {};
+    return `
+    <div style="background:var(--sur2);border:1px solid var(--border);border-left:3px solid ${c.color||'#3d7eff'};border-radius:var(--r);padding:12px">
+      <div style="font-weight:700;font-size:.85rem;color:${c.color||'#3d7eff'};margin-bottom:10px">${esc(c.name)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Reach</div>
+          <input type="number" class="ri-reach" data-id="${c.id}" min="0" step="1"
+            value="${ri.reach !== undefined ? ri.reach : ''}" placeholder="0"
+            style="background:rgba(255,255,255,.04);border:1px solid var(--bor2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.85rem;padding:8px 10px;outline:none;width:100%"/>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Impressions</div>
+          <input type="number" class="ri-impression" data-id="${c.id}" min="0" step="1"
+            value="${ri.impressions !== undefined ? ri.impressions : ''}" placeholder="0"
+            style="background:rgba(255,255,255,.04);border:1px solid var(--bor2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.85rem;padding:8px 10px;outline:none;width:100%"/>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveReachImpressions() {
+  document.querySelectorAll('.ri-reach').forEach(inp => {
+    const id  = inp.dataset.id;
+    const val = inp.value.trim();
+    if (!S.reachImpressions[id]) S.reachImpressions[id] = {};
+    S.reachImpressions[id].reach = val === '' ? null : parseInt(val, 10);
+  });
+  document.querySelectorAll('.ri-impression').forEach(inp => {
+    const id  = inp.dataset.id;
+    const val = inp.value.trim();
+    if (!S.reachImpressions[id]) S.reachImpressions[id] = {};
+    S.reachImpressions[id].impressions = val === '' ? null : parseInt(val, 10);
+  });
+  save();
+  toast('✔ Reach & Impressions save হয়েছে!');
+}
+
+/* ── Report Builder ── */
+function openCreateReport() {
+  document.getElementById('moReportTitle').textContent = '📝 New Report';
+  document.getElementById('moReportId').value   = '';
+  document.getElementById('moReportName').value = '';
+  document.getElementById('moReportDate').value = today();
+  document.getElementById('moReportNotes').value = '';
+  populateReportCampSelect();
+  buildReportLabelInputs({});
+  openMo('moReport');
+  setTimeout(() => document.getElementById('moReportName').focus(), 120);
+}
+
+function openEditReport(id) {
+  const rp = S.customReports.find(x => x.id === id);
+  if (!rp) return;
+  document.getElementById('moReportTitle').textContent = '✏️ Edit Report';
+  document.getElementById('moReportId').value    = id;
+  document.getElementById('moReportName').value  = rp.title;
+  document.getElementById('moReportDate').value  = rp.date;
+  document.getElementById('moReportNotes').value = rp.notes || '';
+  populateReportCampSelect(rp.campaignId);
+  buildReportLabelInputs(rp.labelValues || {});
+  openMo('moReport');
+}
+
+function populateReportCampSelect(selectedId) {
+  const sel = document.getElementById('moReportCamp');
+  sel.innerHTML = '<option value="">— All / None —</option>' +
+    S.campaigns
+      .filter(c => (c.status||'active') !== 'deleted')
+      .map(c => `<option value="${c.id}" ${selectedId===c.id?'selected':''}>${esc(c.name)}</option>`)
+      .join('');
+}
+
+function buildReportLabelInputs(existing) {
+  const container = document.getElementById('moReportLabels');
+  if (!S.customLabels.length) {
+    container.innerHTML = '<div style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Labels nei। "Labels Manage" button থেকে আগে label বানান।</div>';
+    return;
+  }
+  container.innerHTML = S.customLabels.map(lb => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px">
+      <span style="width:10px;height:10px;border-radius:2px;background:${lb.color};flex-shrink:0;display:inline-block"></span>
+      <label style="flex:1;font-size:.82rem;color:var(--text);display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-family:var(--sans)">
+        <input type="checkbox" class="rpt-label-cb" data-id="${lb.id}"
+          ${existing[lb.id] !== undefined ? 'checked' : ''}
+          style="width:auto;accent-color:${lb.color}"
+          onchange="toggleReportLabelInput(this,'${lb.id}')"/>
+        ${esc(lb.name)}
+      </label>
+      <input type="number" id="rpt_val_${lb.id}" min="0" step="any"
+        value="${existing[lb.id] !== undefined ? existing[lb.id] : ''}"
+        placeholder="Value"
+        style="width:100px;background:rgba(255,255,255,.04);border:1px solid var(--bor2);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.82rem;padding:7px 10px;outline:none;display:${existing[lb.id]!==undefined?'block':'none'}"/>
+    </div>
+  `).join('');
+}
+
+function toggleReportLabelInput(cb, labelId) {
+  const inp = document.getElementById('rpt_val_' + labelId);
+  if (inp) {
+    inp.style.display = cb.checked ? 'block' : 'none';
+    if (cb.checked) inp.focus();
+    else inp.value = '';
+  }
+}
+
+function saveReport() {
+  const title     = document.getElementById('moReportName').value.trim();
+  const date      = document.getElementById('moReportDate').value;
+  const campId    = document.getElementById('moReportCamp').value;
+  const notes     = document.getElementById('moReportNotes').value.trim();
+  const editId    = document.getElementById('moReportId').value;
+
+  if (!title) { toast('Report title দিন।','err'); return; }
+  if (!date)  { toast('Date দিন।','err'); return; }
+
+  // Collect label values from checked checkboxes
+  const labelValues = {};
+  document.querySelectorAll('.rpt-label-cb:checked').forEach(cb => {
+    const lbId = cb.dataset.id;
+    const val  = document.getElementById('rpt_val_' + lbId).value.trim();
+    labelValues[lbId] = val === '' ? 0 : parseFloat(val);
+  });
+
+  // Get campaign reach/impressions for selected campaign
+  const riData = campId ? (S.reachImpressions[campId] || {}) : {};
+
+  if (editId) {
+    const idx = S.customReports.findIndex(x => x.id === editId);
+    if (idx !== -1) {
+      S.customReports[idx] = { ...S.customReports[idx], title, date, campaignId: campId, notes, labelValues, riSnapshot: riData };
+      toast('Report updated!');
+    }
+  } else {
+    S.customReports.unshift({ id: uid(), title, date, campaignId: campId, notes, labelValues, riSnapshot: riData, createdAt: today(), createdBy: currentUser ? currentUser.username : 'admin' });
+    toast('✔ Report save হয়েছে!');
+  }
+
+  save();
+  closeMo('moReport');
+  renderReportList();
+}
+
+function deleteReport(id) {
+  if (!confirm('এই report delete করবেন?')) return;
+  S.customReports = S.customReports.filter(x => x.id !== id);
+  save();
+  renderReportList();
+  toast('Report deleted.','err');
+}
+
+function viewReport(id) {
+  const rp = S.customReports.find(x => x.id === id);
+  if (!rp) return;
+  const camp = rp.campaignId ? S.campaigns.find(c => c.id === rp.campaignId) : null;
+
+  let html = `
+    <div style="margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:.63rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Date</div>
+      <div style="font-weight:700;color:var(--text)">${rp.date}</div>
+    </div>`;
+
+  if (camp) {
+    html += `
+    <div style="margin-bottom:16px">
+      <div style="font-family:var(--mono);font-size:.63rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Campaign</div>
+      <div style="font-weight:700;color:${camp.color||'#3d7eff'}">${esc(camp.name)}</div>
+    </div>`;
+
+    // Reach & Impression from snapshot
+    const ri = rp.riSnapshot || {};
+    if (ri.reach !== null && ri.reach !== undefined || ri.impressions !== null && ri.impressions !== undefined) {
+      html += `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
+          <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Reach</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--purple)">${ri.reach !== null && ri.reach !== undefined ? ri.reach.toLocaleString() : '—'}</div>
+        </div>
+        <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:12px">
+          <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Impressions</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--acc2)">${ri.impressions !== null && ri.impressions !== undefined ? ri.impressions.toLocaleString() : '—'}</div>
+        </div>
+      </div>`;
+    }
+
+    // Ad spend for this campaign
+    const campSpend = S.logs.filter(l => l.campaignId === rp.campaignId && l.date === rp.date).reduce((s,l) => s+l.todaySpent,0);
+    if (campSpend > 0) {
+      html += `
+      <div style="margin-bottom:16px;background:var(--sur2);border:1px solid rgba(255,78,106,.3);border-radius:var(--r);padding:12px">
+        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:5px">Ad Spend (${rp.date})</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--red)">${fmt(campSpend)}</div>
+      </div>`;
+    }
+  }
+
+  // Label values
+  if (Object.keys(rp.labelValues || {}).length) {
+    html += `<div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Label Values</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">`;
+    Object.entries(rp.labelValues).forEach(([lbId, val]) => {
+      const lb = S.customLabels.find(x => x.id === lbId);
+      const lbName  = lb ? lb.name  : lbId;
+      const lbColor = lb ? lb.color : 'var(--text2)';
+      html += `
+      <div style="background:var(--sur2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px">
+        <div style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:${lbColor};margin-bottom:5px">${esc(lbName)}</div>
+        <div style="font-size:1.1rem;font-weight:700;color:${lbColor}">${typeof val === 'number' ? val.toLocaleString() : val}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (rp.notes) {
+    html += `
+    <div style="margin-bottom:8px">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Notes</div>
+      <div style="font-size:.84rem;color:var(--text2);line-height:1.6;background:var(--sur2);border-radius:var(--r);padding:12px">${esc(rp.notes)}</div>
+    </div>`;
+  }
+
+  document.getElementById('moReportViewTitle').textContent = '📄 ' + rp.title;
+  document.getElementById('moReportViewContent').innerHTML = html;
+  openMo('moReportView');
+}
+
+/* ── Render Report List ── */
+function renderReportList() {
+  const el = document.getElementById('reportList');
+  if (!el) return;
+  if (!S.customReports.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">📝</div>Kono report nei. "+ New Report" chepun.</div>';
+    return;
+  }
+  const sorted = [...S.customReports].sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = sorted.map(rp => {
+    const camp = rp.campaignId ? S.campaigns.find(c => c.id === rp.campaignId) : null;
+    const labelCount = Object.keys(rp.labelValues || {}).length;
+    const ri = rp.riSnapshot || {};
+    return `
+    <div class="camp-item fu">
+      <div class="camp-info" style="flex:1">
+        <div class="camp-name-row">
+          <span>${esc(rp.title)}</span>
+          <span class="badge" style="background:rgba(61,126,255,.12);color:var(--acc2)">${rp.date}</span>
+          ${camp ? `<span class="badge" style="background:${camp.color||'#3d7eff'}22;color:${camp.color||'#3d7eff'}">${esc(camp.name)}</span>` : ''}
+        </div>
+        <div class="camp-sub" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap">
+          <span>${labelCount} label${labelCount!==1?'s':''}</span>
+          ${ri.reach !== null && ri.reach !== undefined ? `<span style="color:var(--purple)">Reach: ${ri.reach.toLocaleString()}</span>` : ''}
+          ${ri.impressions !== null && ri.impressions !== undefined ? `<span style="color:var(--acc2)">Impr: ${ri.impressions.toLocaleString()}</span>` : ''}
+          ${rp.createdBy ? `<span style="color:var(--text3)">@${esc(rp.createdBy)}</span>` : ''}
+        </div>
+      </div>
+      <div class="camp-actions">
+        <button class="btn btn-ghost btn-sm" onclick="viewReport('${rp.id}')">👁 View</button>
+        <button class="btn btn-edit" onclick="openEditReport('${rp.id}')">✏️</button>
+        <button class="btn btn-danger" onclick="deleteReport('${rp.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Main render for Report page ── */
+function renderReportPage() {
+  renderRIInputs();
+  renderReportList();
 }
 
 function toggleSidebar() {
@@ -2698,3 +3188,4 @@ function renderAnalytics() {
 </script>
 </body>
 </html>
+                                                                                                 
